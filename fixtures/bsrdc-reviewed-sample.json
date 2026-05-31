@@ -1,0 +1,46 @@
+[
+  {
+    "firstName": "Synthetic",
+    "middleName": "Q",
+    "lastName": "Fixture",
+    "fullName": "Synthetic Q Fixture",
+    "age": 34,
+    "gender": "Synthetic",
+    "race": "Synthetic",
+    "status": "Synthetic reviewed fixture",
+    "intakeDate": "2026-05-31T12:00:00.000Z",
+    "offenderId": "SYNTH-OFFENDER-001",
+    "permanentId": "SYNTH-PERMANENT-001",
+    "arrestingAgency": "Synthetic County Review Agency",
+    "arrestingOfficer": "Officer Synthetic",
+    "countyArrested": "Demo",
+    "sourceName": "BSRDC reviewed synthetic fixture",
+    "sourceUrl": "https://example.test/bsrdc-reviewed-fixture/synthetic-q-fixture",
+    "sourceTimestamp": "2026-05-31T12:05:00.000Z",
+    "bookingImageUrl": "https://example.test/images/synthetic-q-fixture.jpg",
+    "bookingImageLocalPath": "./public/booking-images/synthetic-q-fixture.jpg",
+    "complianceNotes": "Synthetic reviewed fixture only. No real person, address, case, or booking record.",
+    "charges": [
+      {
+        "offense": "Synthetic fixture charge one",
+        "arrestCode": "SYN-001",
+        "statute": "SYNTH-1",
+        "chargeDescription": "Synthetic listed charge used only to verify draft mapping.",
+        "status": "Synthetic",
+        "caseNumber": "SYNTH-CASE-001",
+        "controlNumber": "SYNTH-CONTROL-001",
+        "displayOrder": 0
+      },
+      {
+        "offense": "Synthetic fixture charge two",
+        "arrestCode": "SYN-002",
+        "statute": "SYNTH-2",
+        "chargeDescription": "Second synthetic listed charge used only to verify multiple-charge mapping.",
+        "status": "Synthetic",
+        "caseNumber": "SYNTH-CASE-002",
+        "controlNumber": "SYNTH-CONTROL-002",
+        "displayOrder": 1
+      }
+    ]
+  }
+]

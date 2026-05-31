@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import reviewedFixture from "../fixtures/bsrdc-reviewed-sample.json";
 import { bsrdcPublicRosterAdapter, parseBsrdcFixture } from "../src/lib/adapters/bsrdc-public-roster-adapter";
 import { importNormalizedRecordAsDraft } from "../src/lib/adapters/bsrdc-import-to-drafts";
 import { dedupeKey, normalizeNameParts, validateNormalizedRecord, type NormalizedPublicRecord } from "../src/lib/adapters/official-record-types";
@@ -29,5 +30,30 @@ describe("BSRDC reviewed-fixture adapter", () => {
     const db = { publicRecordDemo: { findFirst: vi.fn().mockResolvedValue({ id: "existing", slug: "sample" }), create: vi.fn() } };
     expect((await importNormalizedRecordAsDraft(fixture, db as never)).status).toBe("skipped_duplicate");
     expect(db.publicRecordDemo.create).not.toHaveBeenCalled();
+  });
+  it("maps the sanitized reviewed fixture with multiple charges", () => {
+    const record = reviewedFixture[0] as NormalizedPublicRecord;
+    expect(record.charges).toHaveLength(2);
+    expect(record.permanentId).toBe("SYNTH-PERMANENT-001");
+    expect(validateNormalizedRecord(record)).toEqual([]);
+  });
+  it("rejects missing source fields before persistence", async () => {
+    const db = { publicRecordDemo: { findFirst: vi.fn(), create: vi.fn() } };
+    expect((await importNormalizedRecordAsDraft({ ...fixture, sourceUrl: "" }, db as never)).status).toBe("skipped_warning");
+    expect(db.publicRecordDemo.create).not.toHaveBeenCalled();
+  });
+  it("rejects address-like data before persistence", async () => {
+    const db = { publicRecordDemo: { findFirst: vi.fn(), create: vi.fn() } };
+    expect((await importNormalizedRecordAsDraft({ ...fixture, complianceNotes: "123 Main Street" }, db as never)).status).toBe("skipped_warning");
+    expect(db.publicRecordDemo.create).not.toHaveBeenCalled();
+  });
+  it("does not publish or queue Facebook state", async () => {
+    const create = vi.fn().mockResolvedValue({ id: "draft-1", slug: "sample-public-fixture-20260531" });
+    const db = { publicRecordDemo: { findFirst: vi.fn().mockResolvedValue(null), create } };
+    await importNormalizedRecordAsDraft(fixture, db as never);
+    const data = create.mock.calls[0][0].data;
+    expect(data.publishStatus).toBe("DRAFT");
+    expect(data.facebookPostStatus).toBeUndefined();
+    expect(data.facebookDrafts).toBeUndefined();
   });
 });
