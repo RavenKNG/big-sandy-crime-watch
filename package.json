@@ -6,12 +6,23 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "import:demo": "tsx scripts/import-demo.ts",
+    "import:fixture": "tsx scripts/import-demo.ts --fixture",
+    "import:csv": "tsx scripts/import-demo.ts --csv",
+    "import:dry-run": "tsx scripts/import-demo.ts --dry-run",
+    "fb:dry-run": "tsx scripts/facebook-dry-run.ts",
+    "fb:post-next": "tsx scripts/facebook-dry-run.ts --post-next",
+    "scheduler:start": "tsx scripts/scheduler.ts"
   },
   "dependencies": {
+    "@prisma/client": "^7.8.0",
     "next": "16.2.6",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "^20",
@@ -19,6 +30,9 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
-    "typescript": "^5"
+    "prisma": "^7.8.0",
+    "tsx": "^4.22.3",
+    "typescript": "^5",
+    "vitest": "^4.1.7"
   }
 }

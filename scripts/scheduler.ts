@@ -1,0 +1,1 @@
+console.log("Scheduler demo ready. Jobs: fixture import, editorial Facebook draft generation, retry queue, missing-image refresh.");console.log("Live jobs remain disabled until database and deployment configuration are reviewed.");

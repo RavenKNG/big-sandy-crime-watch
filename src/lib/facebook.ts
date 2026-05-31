@@ -1,0 +1,3 @@
+import{formatDate}from"./content";import type{DemoRecord,NewsArticle}from"./types";
+export const createRecordDraft=(r:DemoRecord,site="https://BigSandyCrimeWatch.com")=>`BOOKING RECORD DEMO - BIG SANDY AREA\n\n${r.displayName} appears in a synthetic public-record demo dated ${formatDate(r.recordDate)}.\n\nView the demo details:\n${site}/records/${r.slug}\n\nDemo fixture only. Charges are allegations. Individuals are presumed innocent unless proven guilty in court.`;
+export const createArticleDraft=(a:NewsArticle,site="https://BigSandyCrimeWatch.com")=>`BIG SANDY PUBLIC-SAFETY UPDATE\n\n${a.title}\n\n${a.summary}\n\nRead more:\n${site}/news/${a.slug}`;

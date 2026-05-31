@@ -1,0 +1,1 @@
+export default function ContactPage(){return <main><section className="content-card"><h1>Contact</h1><p>Use the correction-request page for record review. Editorial contact details can be configured before launch.</p></section></main>}

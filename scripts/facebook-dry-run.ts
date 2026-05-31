@@ -1,0 +1,1 @@
+import{articles}from"../src/lib/demo-data";import{createArticleDraft}from"../src/lib/facebook";console.log(createArticleDraft(articles[0]));if(process.argv.includes("--post-next"))console.log("\nPosting disabled: configure official Meta credentials and enable API mode after review.");

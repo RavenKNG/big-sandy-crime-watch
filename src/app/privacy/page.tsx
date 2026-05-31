@@ -1,0 +1,1 @@
+export default function PrivacyPage(){return <main><section className="content-card"><h1>Privacy</h1><p>This demo stores no submitted form data. Configure persistence, retention rules, and an editorial privacy policy before launch.</p></section></main>}

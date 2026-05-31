@@ -1,0 +1,1 @@
+import Link from"next/link";export function SiteHeader(){return <header className="site-header"><Link className="brand" href="/">BIG SANDY <span>CRIME WATCH</span></Link><nav><Link href="/search">Search</Link><Link href="/disclaimer">Disclaimer</Link><Link href="/admin">Admin</Link></nav></header>}
