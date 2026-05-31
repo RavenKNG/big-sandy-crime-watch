@@ -1,0 +1,432 @@
+import crypto from "node:crypto";
+import fs from "node:fs/promises";
+import path from "node:path";
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
+
+type ReviewedCharge = {
+  offense?: string;
+  arrestCode?: string;
+  statute?: string;
+  chargeDescription: string;
+  status?: string;
+  caseNumber?: string;
+  controlNumber?: string;
+  displayOrder?: number;
+};
+
+type ReviewedRecord = {
+  fullName: string;
+  age?: number;
+  gender?: string;
+  race?: string;
+  status?: string;
+  intakeDate?: string;
+  releaseDate?: string;
+  offenderId?: string;
+  permanentId?: string;
+  countyArrested?: string;
+  arrestingAgency?: string;
+  arrestingOfficer?: string;
+  sourceName: string;
+  sourceUrl: string;
+  sourceTimestamp?: string;
+  imageUrl?: string;
+  imageLocalPath?: string;
+  complianceNotes?: string;
+  charges: ReviewedCharge[];
+};
+
+type ImportOptions = {
+  folder: string;
+  autoPublish?: boolean;
+  createFacebookDraft?: boolean;
+};
+
+type ImageInfo = {
+  absolutePath: string;
+  extension: ".jpg" | ".png" | ".webp";
+};
+
+function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "")
+    .slice(0, 90);
+}
+
+function normalizeText(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const clean = value.replace(/\s+/g, " ").trim();
+  return clean.length ? clean : undefined;
+}
+
+function normalizeRecord(raw: ReviewedRecord): ReviewedRecord {
+  const fullName = normalizeText(raw.fullName);
+  if (!fullName) {
+    throw new Error("record.json is missing fullName.");
+  }
+
+  const sourceName = normalizeText(raw.sourceName);
+  const sourceUrl = normalizeText(raw.sourceUrl);
+
+  if (!sourceName) throw new Error("record.json is missing sourceName.");
+  if (!sourceUrl) throw new Error("record.json is missing sourceUrl.");
+
+  if (!Array.isArray(raw.charges) || raw.charges.length === 0) {
+    throw new Error("record.json must include at least one charge.");
+  }
+
+  const charges = raw.charges.map((charge, index) => {
+    const description = normalizeText(charge.chargeDescription);
+    if (!description) {
+      throw new Error(`Charge ${index + 1} is missing chargeDescription.`);
+    }
+
+    return {
+      offense: normalizeText(charge.offense),
+      arrestCode: normalizeText(charge.arrestCode),
+      statute: normalizeText(charge.statute),
+      chargeDescription: description,
+      status: normalizeText(charge.status),
+      caseNumber: normalizeText(charge.caseNumber),
+      controlNumber: normalizeText(charge.controlNumber),
+      displayOrder: charge.displayOrder ?? index + 1,
+    };
+  });
+
+  return {
+    ...raw,
+    fullName,
+    sourceName,
+    sourceUrl,
+    sourceTimestamp: raw.sourceTimestamp || new Date().toISOString(),
+    status: normalizeText(raw.status) ?? "Listed",
+    countyArrested: normalizeText(raw.countyArrested),
+    arrestingAgency: normalizeText(raw.arrestingAgency),
+    arrestingOfficer: normalizeText(raw.arrestingOfficer),
+    complianceNotes: normalizeText(raw.complianceNotes),
+    charges,
+  };
+}
+
+function hasAddressLikeText(value: string): boolean {
+  return /\b\d{2,6}\s+[A-Za-z0-9.'-]+\s+(street|st|road|rd|lane|ln|drive|dr|avenue|ave|court|ct|circle|cir|highway|hwy)\b/i.test(
+    value,
+  );
+}
+
+function chargeHash(charges: ReviewedCharge[]): string {
+  return crypto
+    .createHash("sha256")
+    .update(
+      charges
+        .map((charge) =>
+          [
+            charge.offense,
+            charge.arrestCode,
+            charge.statute,
+            charge.chargeDescription,
+            charge.status,
+            charge.caseNumber,
+            charge.controlNumber,
+          ]
+            .filter(Boolean)
+            .join("|")
+            .toLowerCase(),
+        )
+        .sort()
+        .join("::"),
+    )
+    .digest("hex");
+}
+
+function dedupeKey(record: ReviewedRecord): string {
+  const hasId = Boolean(record.permanentId || record.offenderId);
+
+  if (hasId && record.intakeDate) {
+    return [
+      record.permanentId,
+      record.offenderId,
+      record.intakeDate,
+    ]
+      .filter(Boolean)
+      .join("|")
+      .toLowerCase();
+  }
+
+  return [
+    record.fullName,
+    record.intakeDate,
+    chargeHash(record.charges),
+  ]
+    .filter(Boolean)
+    .join("|")
+    .toLowerCase();
+}
+
+async function readJson<T>(filePath: string): Promise<T> {
+  const raw = await fs.readFile(filePath, "utf8");
+  return JSON.parse(raw) as T;
+}
+
+async function exists(filePath: string): Promise<boolean> {
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function detectImage(filePath: string): Promise<".jpg" | ".png" | ".webp" | null> {
+  const buffer = await fs.readFile(filePath);
+  if (buffer.length < 12) return null;
+
+  if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) return ".jpg";
+
+  if (
+    buffer[0] === 0x89 &&
+    buffer[1] === 0x50 &&
+    buffer[2] === 0x4e &&
+    buffer[3] === 0x47
+  ) {
+    return ".png";
+  }
+
+  if (
+    buffer.toString("ascii", 0, 4) === "RIFF" &&
+    buffer.toString("ascii", 8, 12) === "WEBP"
+  ) {
+    return ".webp";
+  }
+
+  return null;
+}
+
+async function findImageFile(folder: string): Promise<ImageInfo | null> {
+  const files = await fs.readdir(folder);
+
+  for (const file of files) {
+    const absolutePath = path.join(folder, file);
+    const stat = await fs.stat(absolutePath);
+    if (!stat.isFile()) continue;
+
+    if (file.toLowerCase() === "record.json") continue;
+
+    const extension = await detectImage(absolutePath);
+    if (extension) {
+      return { absolutePath, extension };
+    }
+  }
+
+  return null;
+}
+
+async function ensureRecordTemplate(folder: string): Promise<string> {
+  const templatePath = path.join(folder, "record.template.json");
+
+  const template: ReviewedRecord = {
+    fullName: "First Middle Last",
+    age: 0,
+    gender: "M",
+    race: "Unknown",
+    status: "Listed",
+    intakeDate: new Date().toISOString(),
+    releaseDate: undefined,
+    offenderId: "OFFENDER-ID-HERE",
+    permanentId: "PERMANENT-ID-HERE",
+    countyArrested: "Johnson",
+    arrestingAgency: "Agency listed by source",
+    arrestingOfficer: "Officer listed by source",
+    sourceName: "Big Sandy Regional Detention Center Public Roster",
+    sourceUrl: "SOURCE-URL-HERE",
+    sourceTimestamp: new Date().toISOString(),
+    complianceNotes:
+      "Reviewed local import. Charges are allegations. Presumed innocent unless proven guilty.",
+    charges: [
+      {
+        offense: "Listed offense",
+        statute: "STATUTE-HERE",
+        chargeDescription: "Charge description from source",
+        status: "Listed",
+        caseNumber: "CASE-NUMBER-HERE",
+        controlNumber: "CONTROL-NUMBER-HERE",
+        displayOrder: 1,
+      },
+    ],
+  };
+
+  await fs.writeFile(templatePath, JSON.stringify(template, null, 2), "utf8");
+  return templatePath;
+}
+
+async function copyImageToPublic(recordSlug: string, imageInfo: ImageInfo | null): Promise<string | undefined> {
+  if (!imageInfo) return undefined;
+
+  const publicDir = path.join(process.cwd(), "public", "booking-images", recordSlug);
+  await fs.mkdir(publicDir, { recursive: true });
+
+  const destination = path.join(publicDir, `mugshot${imageInfo.extension}`);
+  await fs.copyFile(imageInfo.absolutePath, destination);
+
+  return `/booking-images/${recordSlug}/mugshot${imageInfo.extension}`;
+}
+
+function makeFacebookPostText(record: ReviewedRecord, publicUrl: string): string {
+  return [
+    "🚨 BOOKING UPDATE — BIG SANDY AREA",
+    "",
+    `${record.fullName} was listed in a public booking record${record.intakeDate ? ` on ${new Date(record.intakeDate).toLocaleDateString()}` : ""}.`,
+    "",
+    "Full listed charges:",
+    publicUrl,
+    "",
+    "Charges are allegations. Individuals are presumed innocent unless proven guilty in court.",
+  ].join("\n");
+}
+
+async function createFacebookDraft(recordId: string, recordSlug: string, record: ReviewedRecord, imagePath?: string) {
+  const siteUrl = process.env.SITE_URL || "https://bigsandycrimewatch.com";
+  const postUrl = `${siteUrl.replace(/\/$/, "")}/records/${recordSlug}`;
+  const postText = makeFacebookPostText(record, postUrl);
+
+  const existing = await prisma.facebookDraft.findFirst({
+    where: {
+      recordId,
+    },
+  });
+
+  if (existing) return existing;
+
+  return prisma.facebookDraft.create({
+    data: {
+      recordId,
+      status: "DRAFTED",
+      scheduledFor: new Date(),
+      postText,
+      postUrl,
+      imageUrl: imagePath,
+    },
+  });
+}
+
+export async function importApprovedFolder(options: ImportOptions) {
+  const folder = path.resolve(options.folder);
+  const recordPath = path.join(folder, "record.json");
+
+  if (!(await exists(folder))) {
+    throw new Error(`Folder not found: ${folder}`);
+  }
+
+  if (!(await exists(recordPath))) {
+    const templatePath = await ensureRecordTemplate(folder);
+    return {
+      status: "missing_record_json" as const,
+      message: `record.json was missing. Created template: ${templatePath}`,
+      templatePath,
+    };
+  }
+
+  const raw = await readJson<ReviewedRecord>(recordPath);
+  const record = normalizeRecord(raw);
+
+  const combined = JSON.stringify(record);
+  if (hasAddressLikeText(combined)) {
+    throw new Error(
+      "Address-like data detected in record.json. Remove home/address fields before importing.",
+    );
+  }
+
+  const hash = chargeHash(record.charges);
+  const key = dedupeKey(record);
+  const datePart = record.intakeDate
+    ? record.intakeDate.replace(/[^0-9]/g, "").slice(0, 8)
+    : new Date().toISOString().slice(0, 10).replace(/-/g, "");
+
+  const recordSlug = slugify(`${record.fullName}-${datePart}`);
+  const imageInfo = await findImageFile(folder);
+  const copiedImagePath = await copyImageToPublic(recordSlug, imageInfo);
+
+  const existing = await prisma.publicRecordDemo.findFirst({
+    where: {
+      OR: [
+        { slug: recordSlug },
+        { sourceUrl: record.sourceUrl },
+      ],
+    },
+  });
+
+  if (existing) {
+    return {
+      status: "skipped_duplicate" as const,
+      id: existing.id,
+      slug: existing.slug,
+      duplicateKey: key,
+      chargeHash: hash,
+    };
+  }
+
+  const publishStatus = options.autoPublish ? "PUBLISHED" : "DRAFT";
+  const facebookPostStatus =
+    options.createFacebookDraft && options.autoPublish ? "DRAFTED" : "NOT_QUEUED";
+
+  const created = await prisma.publicRecordDemo.create({
+    data: {
+      slug: recordSlug,
+      displayName: record.fullName,
+      age: record.age,
+      gender: record.gender,
+      county: record.countyArrested,
+      recordDate: record.intakeDate ? new Date(record.intakeDate) : new Date(),
+      status: record.status,
+      sourceName: record.sourceName,
+      sourceUrl: record.sourceUrl,
+      sourceTimestamp: new Date(record.sourceTimestamp || new Date().toISOString()),
+      imageUrl: copiedImagePath || record.imageUrl,
+      imageLocalPath: copiedImagePath || record.imageLocalPath,
+      publishStatus,
+      facebookPostStatus,
+      complianceNotes: [
+        record.complianceNotes,
+        `Imported through reviewed local folder automation.`,
+        `duplicateKey: ${key}`,
+        `chargeHash: ${hash}`,
+        `autoPublish: ${String(Boolean(options.autoPublish))}`,
+        `facebookDraftRequested: ${String(Boolean(options.createFacebookDraft))}`,
+      ]
+        .filter(Boolean)
+        .join("\n\n"),
+      charges: {
+        create: record.charges.map((charge, index) => ({
+          offense: charge.offense,
+          statute: charge.statute,
+          chargeDescription: charge.chargeDescription,
+          caseNumber: charge.caseNumber,
+          displayOrder: charge.displayOrder ?? index + 1,
+        })),
+      },
+    },
+  });
+
+  let facebookDraftId: string | undefined;
+
+  if (options.createFacebookDraft && options.autoPublish) {
+    const draft = await createFacebookDraft(created.id, created.slug, record, copiedImagePath);
+    facebookDraftId = draft.id;
+  }
+
+  return {
+    status: "created" as const,
+    id: created.id,
+    slug: created.slug,
+    publishStatus,
+    facebookPostStatus,
+    imagePath: copiedImagePath,
+    duplicateKey: key,
+    chargeHash: hash,
+    facebookDraftId,
+  };
+}

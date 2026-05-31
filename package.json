@@ -1,8 +1,10 @@
-{
+﻿{
   "name": "big-sandy-crime-watch",
   "version": "0.1.0",
   "private": true,
-  "scripts": {
+  "scripts": {"import:approved-folder": "tsx scripts/import-approved-folder.ts",
+"reviewed-import:watch": "tsx scripts/watch-approved-imports.ts",
+"reviewed-import:scan": "tsx scripts/watch-approved-imports.ts --once",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
@@ -44,3 +46,4 @@
     "vitest": "^4.1.7"
   }
 }
+
