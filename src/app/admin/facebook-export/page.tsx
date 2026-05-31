@@ -1,9 +1,4 @@
-import { CopyDraftButton } from "@/components/CopyDraftButton";
-import { articles } from "@/lib/demo-data";
-import { createArticleDraft } from "@/lib/facebook";
-
-export default function FacebookExportPage() {
-  const article = articles[0];
-  const draft = createArticleDraft(article);
-  return <main><section className="content-card"><p className="eyebrow">MANUAL FACEBOOK EXPORT</p><h1>{article.title}</h1><p>Copy this reviewed editorial draft for manual posting. Official API posting remains disabled.</p><textarea readOnly value={draft} /><p><strong>Target URL:</strong> https://BigSandyCrimeWatch.com/news/{article.slug}</p><p><strong>Image path:</strong> No image selected</p><CopyDraftButton text={draft} /><p className="muted">Manual posted-status persistence becomes active after database setup.</p></section></main>;
-}
+import { markRecordManuallyPosted } from "@/app/actions";import { CopyDraftButton } from "@/components/CopyDraftButton";import { articles } from "@/lib/demo-data";import { getDb } from "@/lib/db";import { createArticleDraft,createRecordDraft } from "@/lib/facebook";
+export const dynamic="force-dynamic";
+export default async function FacebookExportPage(){const records=await getDb().publicRecordDemo.findMany({where:{publishStatus:{in:["APPROVED","PUBLISHED"]}},orderBy:{createdAt:"desc"},take:10});return <main><section className="content-card"><p className="eyebrow">MANUAL FACEBOOK EXPORT</p><h1>Reviewed posting queue</h1><h2>Editorial update</h2><Export text={createArticleDraft(articles[0])} url={`https://BigSandyCrimeWatch.com/news/${articles[0].slug}`}/><h2>Reviewed synthetic records</h2>{records.length===0?<p>No approved saved records.</p>:records.map(r=><div className="charge" key={r.id}><h3>{r.displayName}</h3><Export text={createRecordDraft({...r,age:r.age??undefined,gender:r.gender??undefined,sourceUrl:r.sourceUrl??undefined,imageUrl:r.imageUrl??undefined,recordDate:r.recordDate.toISOString(),sourceTimestamp:r.sourceTimestamp.toISOString(),county:r.county??"",status:r.status??"",charges:[]})} url={`https://BigSandyCrimeWatch.com/records/${r.slug}`}/><p>Status: {r.facebookPostStatus}</p><form action={markRecordManuallyPosted}><input type="hidden" name="id" value={r.id}/><button type="submit">Mark manually posted</button></form></div>)}</section></main>}
+function Export({text,url}:{text:string;url:string}){return <div><textarea readOnly value={text}/><p><strong>Target URL:</strong> {url}</p><CopyDraftButton text={text}/><CopyDraftButton text={url}/></div>}

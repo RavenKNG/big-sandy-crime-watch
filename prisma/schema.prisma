@@ -138,6 +138,7 @@ model CorrectionRequest {
   name String
   email String
   requestType CorrectionType
+  relatedUrl String?
   message String
   status CorrectionStatus @default(NEW)
   createdAt DateTime @default(now())
