@@ -1,0 +1,3 @@
+export default function SponsorsPage() {
+  return <main><section className="content-card"><p className="eyebrow">SPONSOR CONFIGURATION</p><h1>Local sponsor slots</h1><p>All placements are disabled by default. Configure sponsors only after editorial and deployment setup.</p><form><label>Sponsor name<input name="name" /></label><label>Placement<select name="placement"><option>mobile-top-banner</option><option>in-feed</option><option>detail-top</option><option>footer</option></select></label><label>Link URL<input name="url" type="url" /></label><label>Short text<input name="text" /></label><button type="button">Save after database setup</button></form></section></main>;
+}

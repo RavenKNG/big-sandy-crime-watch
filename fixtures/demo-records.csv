@@ -1,0 +1,2 @@
+slug,displayName,county,recordDate,status,sourceName,sourceTimestamp,offense,statute,chargeDescription
+,Morgan Example,Magoffin,2026-05-26T10:00:00.000Z,Synthetic fixture,Sanitized CSV fixture,2026-05-26T10:10:00.000Z,Demo CSV category,DEMO-CSV,Synthetic CSV fixture charge

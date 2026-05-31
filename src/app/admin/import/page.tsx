@@ -1,0 +1,3 @@
+export default function ImportPage() {
+  return <main><section className="content-card"><p className="eyebrow">VALIDATED LOCAL IMPORT</p><h1>CSV and JSON fixture import</h1><p>Imports are deduplicated and normalized to <strong>DRAFT</strong>. Use local sanitized fixture files only.</p><pre>npm run import:csv -- --file fixtures/demo-records.csv{"\n"}npm run import:demo -- --file fixtures/demo-records.json</pre><h2>CSV columns</h2><p>slug, displayName, county, recordDate, status, sourceName, sourceTimestamp, offense, statute, chargeDescription</p><p className="notice">Real official-source adapters remain disabled pending human review.</p></section></main>;
+}
