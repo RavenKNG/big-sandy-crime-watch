@@ -277,7 +277,7 @@ async function copyImageToPublic(recordSlug: string, imageInfo: ImageInfo | null
 
 function makeFacebookPostText(record: ReviewedRecord, publicUrl: string): string {
   return [
-    "🚨 BOOKING UPDATE — BIG SANDY AREA",
+    "ðŸš¨ BOOKING UPDATE â€” BIG SANDY AREA",
     "",
     `${record.fullName} was listed in a public booking record${record.intakeDate ? ` on ${new Date(record.intakeDate).toLocaleDateString()}` : ""}.`,
     "",
@@ -401,7 +401,7 @@ export async function importApprovedFolder(options: ImportOptions) {
         .join("\n\n"),
       charges: {
         create: record.charges.map((charge, index) => ({
-          offense: charge.offense,
+          offense: charge.offense ?? charge.chargeDescription,
           statute: charge.statute,
           chargeDescription: charge.chargeDescription,
           caseNumber: charge.caseNumber,
