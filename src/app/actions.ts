@@ -46,6 +46,7 @@ export async function updateCorrectionStatus(formData: FormData) {
 export async function saveSponsor(formData: FormData) {
   await getDb().sponsorAd.create({ data: {
     name: String(formData.get("name")), placement: String(formData.get("placement")),
+    imageUrl: String(formData.get("imageUrl")) || null,
     linkUrl: String(formData.get("url")) || null, text: String(formData.get("text")) || null, enabled: false,
   } });
   revalidatePath("/admin/sponsors");

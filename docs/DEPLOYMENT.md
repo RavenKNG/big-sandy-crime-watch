@@ -10,8 +10,9 @@ This is a synthetic-fixture demo. Do not enable a real source adapter until huma
 2. Run `npm install`, `npx prisma generate`, and `npx prisma migrate deploy`.
 3. Configure admin authentication before exposing `/admin`.
 4. Keep `FACEBOOK_POSTING_ENABLED=false` until official Meta credentials and editorial rules are reviewed.
-5. Build with `npm run build`.
-6. Start with `npm run start`.
+5. Keep `ADS_ENABLED=false`, `ANALYTICS_ENABLED=false`, and `EMAIL_NOTIFICATIONS_ENABLED=false` until reviewed.
+6. Build with `npm run build`.
+7. Start with `npm run start`.
 
 ## Suggested PM2 command
 
@@ -33,3 +34,10 @@ pm2 start npm --name big-sandy-crime-watch -- start
 ## DNS
 
 Point the apex `A` record and either the `www` `CNAME` or `A` record to the selected deployment target after a server is provisioned.
+
+## Dependency advisories
+
+`npm audit` currently reports moderate transitive advisories through Next.js
+PostCSS and Prisma development tooling. npm's suggested automated resolutions
+require risky major-version changes or downgrades. Defer until compatible
+upstream patch releases are available and keep tests/build green.

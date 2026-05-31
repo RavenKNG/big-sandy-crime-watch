@@ -3,9 +3,20 @@ import "./globals.css";
 import { SiteHeader } from "@/components/SiteHeader";
 
 export const metadata: Metadata = {
-  title: "Big Sandy Crime Watch",
+  title: {
+    default: "Big Sandy Crime Watch",
+    template: "%s | Big Sandy Crime Watch",
+  },
   description: "Big Sandy area public-safety news and public-record transparency demo.",
   metadataBase: new URL("https://BigSandyCrimeWatch.com"),
+  alternates: { canonical: "/" },
+  openGraph: {
+    title: "Big Sandy Crime Watch",
+    description: "Big Sandy area public-safety news and public-record transparency demo.",
+    url: "https://BigSandyCrimeWatch.com",
+    siteName: "Big Sandy Crime Watch",
+    type: "website",
+  },
 };
 
 export default function RootLayout({

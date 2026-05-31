@@ -29,7 +29,13 @@ Automated Facebook posting remains disabled.
 ## Sponsor placeholders
 
 Open `/admin/sponsors` to save placeholder configuration. Newly saved sponsors
-remain disabled. Do not enable real ads during the demo phase.
+remain disabled. Add a name, placement, optional text, image reference, and
+target URL. Do not enable real ads during the demo phase.
+
+## Analytics and email
+
+Analytics and correction-request email notifications remain disabled by
+default. Review correction requests manually from `/admin`.
 
 ## Disabled features
 
@@ -56,3 +62,7 @@ pm2 save
 
 Run migrations only when a reviewed schema migration is present. Do not touch
 the Raven Royale PM2 processes or Nginx configuration during this workflow.
+
+Before deployment, create a dated VPS backup of `/opt/big-sandy-crime-watch`.
+The local placeholder-only recovery template is stored at
+`C:\Users\bypass\BigSandyCrimeWatch-Recovery-Template.txt`.

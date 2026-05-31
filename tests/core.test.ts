@@ -25,4 +25,6 @@ describe("demo CMS foundation", () => {
   it("parses multiple manual charges",()=>expect(parseChargeLines("One | A | First\nTwo | B | Second")).toHaveLength(2));
   it("validates manual synthetic records",()=>expect(recordFormSchema.parse({displayName:"Demo Name",county:"Pike",recordDate:"2026-05-31",sourceName:"Synthetic fixture",sourceUrl:"",sourceTimestamp:"2026-05-31",imageUrl:"",complianceNotes:"Reviewed demo",charges:"Demo"}).displayName).toBe("Demo Name"));
   it("validates correction submissions",()=>expect(correctionFormSchema.parse({name:"Jane Doe",email:"jane@example.test",requestType:"CORRECTION",relatedUrl:"",message:"Please review this demo entry."}).requestType).toBe("CORRECTION"));
+  it("keeps careful presumption-of-innocence language in record drafts",()=>expect(createRecordDraft(demoRecords[0])).toContain("presumed innocent unless proven guilty"));
+  it("keeps sponsor placeholders disabled in configuration",()=>expect(process.env.ADS_ENABLED).not.toBe("true"));
 });
