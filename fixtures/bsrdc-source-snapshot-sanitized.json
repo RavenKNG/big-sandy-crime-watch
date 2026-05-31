@@ -1,0 +1,29 @@
+[
+  {
+    "name": "Synthetic Snapshot Person",
+    "age": "41",
+    "sex": "Synthetic",
+    "bookingStatus": "Synthetic roster fixture",
+    "bookedAt": "2026-05-30T09:00:00.000Z",
+    "releasedAt": "2026-05-31T09:00:00.000Z",
+    "offenderNumber": "SNAPSHOT-OFFENDER-001",
+    "permanentNumber": "SNAPSHOT-PERMANENT-001",
+    "agency": "Synthetic Review Agency",
+    "officer": "Officer Snapshot",
+    "county": "Demo",
+    "detailUrl": "https://example.test/reviewed-snapshot/synthetic-snapshot-person",
+    "sourceTimestamp": "2026-05-31T09:05:00.000Z",
+    "imageUrl": "https://example.test/images/synthetic-snapshot-person.jpg",
+    "charges": [
+      {
+        "offense": "Synthetic snapshot charge",
+        "code": "SNAP-001",
+        "statute": "SNAPSHOT-1",
+        "description": "Synthetic listed charge for local parser validation.",
+        "status": "Synthetic",
+        "caseNumber": "SNAPSHOT-CASE-001",
+        "controlNumber": "SNAPSHOT-CONTROL-001"
+      }
+    ]
+  }
+]

@@ -4,6 +4,8 @@ import { bsrdcPublicRosterAdapter, parseBsrdcFixture } from "../src/lib/adapters
 import { importNormalizedRecordAsDraft } from "../src/lib/adapters/bsrdc-import-to-drafts";
 import { dedupeKey, normalizeNameParts, validateNormalizedRecord, type NormalizedPublicRecord } from "../src/lib/adapters/official-record-types";
 import { createMappingReport, sanitizeMappingSample } from "../src/lib/adapters/bsrdc-mapping-report";
+import sourceSnapshot from "../fixtures/bsrdc-source-snapshot-sanitized.json";
+import { inferSnapshotRange, mapBsrdcSourceSnapshot } from "../src/lib/adapters/bsrdc-source-snapshot";
 
 const fixture: NormalizedPublicRecord = {
   fullName: "Sample Public Fixture",
@@ -80,5 +82,27 @@ describe("BSRDC reviewed-fixture adapter", () => {
   it("reports missing mapping fields", () => {
     const report = createMappingReport([fixture], "2026-05-01", "2026-05-31");
     expect(report.missingFields).toContain("bookingImageUrl");
+  });
+  it("maps a sanitized source-shaped local snapshot", () => {
+    const [record] = mapBsrdcSourceSnapshot(sourceSnapshot);
+    expect(record.fullName).toBe("Synthetic Snapshot Person");
+    expect(record.age).toBe(41);
+    expect(record.gender).toBe("Synthetic");
+    expect(record.releaseDate).toBe("2026-05-31T09:00:00.000Z");
+    expect(record.charges[0].statute).toBe("SNAPSHOT-1");
+  });
+  it("reports file snapshot range and missing fields clearly", () => {
+    const records = mapBsrdcSourceSnapshot(sourceSnapshot);
+    expect(inferSnapshotRange(records)).toEqual({ fromDate: "2026-05-30T09:00:00.000Z", toDate: "2026-05-30T09:00:00.000Z" });
+    expect(createMappingReport(records, "from", "to").missingFields).toContain("bookingImageLocalPath");
+  });
+  it("redacts file snapshot identifiers without persistence state", () => {
+    const [record] = mapBsrdcSourceSnapshot(sourceSnapshot);
+    const sanitized = sanitizeMappingSample(record);
+    expect(sanitized.fullName).toBe("[REDACTED_NAME]");
+    expect(sanitized.offenderId).toBe("[REDACTED_ID]");
+    expect(sanitized.arrestingOfficer).toBe("[REDACTED_OFFICER]");
+    expect(sanitized.charges[0].controlNumber).toBe("[REDACTED_CONTROL_NUMBER]");
+    expect(createMappingReport([record], "from", "to").databaseWrites).toBe(false);
   });
 });
