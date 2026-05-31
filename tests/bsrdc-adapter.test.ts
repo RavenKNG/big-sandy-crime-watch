@@ -3,6 +3,7 @@ import reviewedFixture from "../fixtures/bsrdc-reviewed-sample.json";
 import { bsrdcPublicRosterAdapter, parseBsrdcFixture } from "../src/lib/adapters/bsrdc-public-roster-adapter";
 import { importNormalizedRecordAsDraft } from "../src/lib/adapters/bsrdc-import-to-drafts";
 import { dedupeKey, normalizeNameParts, validateNormalizedRecord, type NormalizedPublicRecord } from "../src/lib/adapters/official-record-types";
+import { createMappingReport, sanitizeMappingSample } from "../src/lib/adapters/bsrdc-mapping-report";
 
 const fixture: NormalizedPublicRecord = {
   fullName: "Sample Public Fixture",
@@ -55,5 +56,29 @@ describe("BSRDC reviewed-fixture adapter", () => {
     expect(data.publishStatus).toBe("DRAFT");
     expect(data.facebookPostStatus).toBeUndefined();
     expect(data.facebookDrafts).toBeUndefined();
+  });
+  it("creates a dry-run-only mapping report without write flags", () => {
+    const report = createMappingReport(reviewedFixture as NormalizedPublicRecord[], "2026-05-01", "2026-05-31");
+    expect(report.mode).toBe("DRY_RUN_ONLY");
+    expect(report.rowsFound).toBe(1);
+    expect(report.chargeRows).toBe(2);
+    expect(report.databaseWrites).toBe(false);
+    expect(report.publicPublishing).toBe(false);
+    expect(report.facebookQueueCreated).toBe(false);
+  });
+  it("redacts mapping sample identifiers and image references", () => {
+    const sanitized = sanitizeMappingSample(reviewedFixture[0] as NormalizedPublicRecord);
+    expect(sanitized.fullName).toBe("[REDACTED_NAME]");
+    expect(sanitized.permanentId).toBe("[REDACTED_ID]");
+    expect(sanitized.bookingImageUrl).toBe("[IMAGE_REFERENCE_PRESENT_NOT_STORED]");
+    expect(sanitized.charges[0].caseNumber).toBe("[REDACTED_CASE_NUMBER]");
+  });
+  it("redacts address-like mapping sample text", () => {
+    const sanitized = sanitizeMappingSample({ ...fixture, status: "123 Main Street" });
+    expect(sanitized.status).toBe("[REDACTED_ADDRESS_LIKE_DATA]");
+  });
+  it("reports missing mapping fields", () => {
+    const report = createMappingReport([fixture], "2026-05-01", "2026-05-31");
+    expect(report.missingFields).toContain("bookingImageUrl");
   });
 });
