@@ -11,8 +11,9 @@ This is a synthetic-fixture demo. Do not enable a real source adapter until huma
 3. Configure admin authentication before exposing `/admin`.
 4. Keep `FACEBOOK_POSTING_ENABLED=false` until official Meta credentials and editorial rules are reviewed.
 5. Keep `ADS_ENABLED=false`, `ANALYTICS_ENABLED=false`, and `EMAIL_NOTIFICATIONS_ENABLED=false` until reviewed.
-6. Build with `npm run build`.
-7. Start with `npm run start`.
+6. Keep `BSRDC_IMPORT_ENABLED=false`; the reviewed-fixture importer creates drafts only and live fetching remains unconfigured.
+7. Build with `npm run build`.
+8. Start with `npm run start`.
 
 ## Suggested PM2 command
 

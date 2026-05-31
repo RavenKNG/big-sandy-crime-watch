@@ -13,6 +13,8 @@
     "import:fixture": "tsx scripts/import-demo.ts --fixture",
     "import:csv": "tsx scripts/import-demo.ts --csv",
     "import:dry-run": "tsx scripts/import-demo.ts --dry-run",
+    "import:bsrdc": "tsx scripts/import-bsrdc-range.ts",
+    "import:bsrdc:dry-run": "tsx scripts/import-bsrdc-range.ts --dry-run",
     "fb:dry-run": "tsx scripts/facebook-dry-run.ts",
     "fb:post-next": "tsx scripts/facebook-dry-run.ts --post-next",
     "scheduler:start": "tsx scripts/scheduler.ts"

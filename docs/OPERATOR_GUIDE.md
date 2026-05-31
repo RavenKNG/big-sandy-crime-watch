@@ -39,11 +39,18 @@ default. Review correction requests manually from `/admin`.
 
 ## Disabled features
 
-- Official-source adapter
+- Live official-source fetching
 - Real-record scraping
 - Facebook API auto-posting
 - Email notifications
 - Real sponsor display
+
+## Reviewed fixture imports
+
+The BSRDC adapter boundary is disabled by default. It accepts only a
+human-reviewed JSON fixture file and creates editorial `DRAFT` records. It
+never publishes or queues Facebook posts automatically. Do not set
+`BSRDC_IMPORT_ENABLED=true` until the source and fixture have been reviewed.
 
 ## Server operations
 

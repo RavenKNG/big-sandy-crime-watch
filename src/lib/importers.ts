@@ -78,6 +78,8 @@ export function parseCsv(text: string): DemoRecord[] {
 }
 
 export const officialSourceAdapterStatus = {
-  enabled: false,
-  message: "Disabled pending human legal and platform review. Implement as a separate adapter without changing the fixture importer contract.",
+  enabled: process.env.BSRDC_IMPORT_ENABLED === "true",
+  message: process.env.BSRDC_IMPORT_ENABLED === "true"
+    ? "BSRDC reviewed-fixture draft importer enabled. Live endpoint fetching remains unconfigured."
+    : "Disabled pending human legal and platform review. Reviewed fixture imports require BSRDC_IMPORT_ENABLED=true.",
 };
