@@ -1,9 +1,7 @@
-﻿import fs from "node:fs/promises";
+import fs from "node:fs/promises";
 import path from "node:path";
-import { PrismaClient } from "@prisma/client";
 import { importApprovedFolder } from "../src/lib/approved-imports";
 
-const prisma = new PrismaClient();
 const ROOT = process.cwd();
 
 function envBool(name: string, fallback = false): boolean {
@@ -280,7 +278,6 @@ async function postNextFacebookDraft() {
     },
     data: {
       status: "POSTED",
-      postedAt: new Date(),
       facebookPostId: json.id,
     },
   });
