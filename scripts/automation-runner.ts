@@ -288,11 +288,13 @@ async function postNextFacebookDraft() {
   };
 }
 
-async function runOnce() {
+async function runOnce(options: { skipFacebookPost?: boolean } = {}) {
   const officialSourceResult = await runOfficialSourceImport();
   const importResults = await scanApprovedImports();
   const draftResults = await createFacebookDraftsForPublishedRecords();
-  const facebookPostResult = await postNextFacebookDraft();
+  const facebookPostResult = options.skipFacebookPost
+    ? { skipped: true, reason: "Startup post skipped; waiting for the configured interval." }
+    : await postNextFacebookDraft();
 
   console.log(
     JSON.stringify(
@@ -322,7 +324,7 @@ async function main() {
   const intervalHours = envNum("POST_INTERVAL_HOURS", 3);
   const intervalMs = intervalHours * 60 * 60 * 1000;
 
-  await runOnce();
+  await runOnce({ skipFacebookPost: envBool("AUTOMATION_SKIP_INITIAL_FACEBOOK_POST", false) });
 
   setInterval(() => {
     runOnce().catch((error) => {

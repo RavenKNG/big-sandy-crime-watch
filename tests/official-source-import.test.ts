@@ -75,9 +75,15 @@ describe("official BSRDC public roster parser", () => {
 
   it("runs official import before Facebook posting in the worker cycle", async () => {
     const runner = await readFile("scripts/automation-runner.ts", "utf8");
-    const runOnce = runner.slice(runner.indexOf("async function runOnce()"));
+    const runOnce = runner.slice(runner.indexOf("async function runOnce("));
     expect(runOnce.indexOf("runOfficialSourceImport()")).toBeLessThan(
       runOnce.indexOf("postNextFacebookDraft()"),
     );
+  });
+
+  it("supports skipping only the startup Facebook post after a worker restart", async () => {
+    const runner = await readFile("scripts/automation-runner.ts", "utf8");
+    expect(runner).toContain('envBool("AUTOMATION_SKIP_INITIAL_FACEBOOK_POST", false)');
+    expect(runner).toContain("setInterval(() => {\n    runOnce().catch");
   });
 });
