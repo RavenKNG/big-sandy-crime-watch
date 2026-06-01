@@ -58,3 +58,19 @@ export function todayBounds(now = new Date()) {
   end.setUTCDate(end.getUTCDate() + 1);
   return { start, end };
 }
+
+export function dayBounds(daysAgo: number, now = new Date()) {
+  const { start } = todayBounds(now);
+  start.setUTCDate(start.getUTCDate() - daysAgo);
+  const end = new Date(start);
+  end.setUTCDate(end.getUTCDate() + 1);
+  return { start, end };
+}
+
+export function last72HoursBounds(now = new Date()) {
+  const { start: end } = todayBounds(now);
+  end.setUTCDate(end.getUTCDate() + 1);
+  const start = new Date(end);
+  start.setUTCDate(start.getUTCDate() - 3);
+  return { start, end };
+}

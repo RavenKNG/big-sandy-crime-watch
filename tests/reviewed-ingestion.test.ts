@@ -47,4 +47,12 @@ describe("reviewed official-source ingestion", () => {
       { displayName: "asc" },
     ]);
   });
+
+  it("calculates yesterday and the last three Eastern calendar days", async () => {
+    const { dayBounds, last72HoursBounds } = await import("../src/lib/record-display");
+    const now = new Date("2026-06-01T14:00:00.000Z");
+    expect(dayBounds(1, now).start.toISOString()).toBe("2026-05-31T00:00:00.000Z");
+    expect(last72HoursBounds(now).start.toISOString()).toBe("2026-05-30T00:00:00.000Z");
+    expect(last72HoursBounds(now).end.toISOString()).toBe("2026-06-02T00:00:00.000Z");
+  });
 });

@@ -127,6 +127,7 @@ export default async function RecordPage({ params }: { params: Promise<{ slug: s
             </p>
           ))}
           <p><Link href="/today">Browse today&apos;s regional bookings</Link></p>
+          <p><Link href="/last-72-hours">Browse the last 72 hours</Link></p>
         </section>
 
         <AdSlot placement="detail-lower" />

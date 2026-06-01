@@ -15,7 +15,15 @@ describe("admin proxy", () => {
     expect(config.matcher).toBe("/admin/:path*");
     const publicPaths = [
       "/",
+      "/today",
+      "/yesterday",
+      "/last-72-hours",
+      "/category/bookings",
+      "/county/johnson",
       "/records/sample-record-alex-rivera-2026-05-30",
+      "/booking-images/sample/mugshot.jpg",
+      "/_next/static/chunks/app.js",
+      "/favicon.ico",
       "/disclaimer",
       "/correction-request",
       "/sitemap.xml",
