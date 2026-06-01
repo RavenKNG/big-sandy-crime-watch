@@ -70,6 +70,8 @@ model PublicRecordDemo {
   displayName String
   age Int?
   gender String?
+  arrestingAgency String?
+  arrestingOfficer String?
   county String?
   recordDate DateTime
   status String?

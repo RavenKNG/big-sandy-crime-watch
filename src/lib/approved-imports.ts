@@ -2,6 +2,7 @@
 import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { createFacebookRecordCaption } from "./facebook-record-caption";
 type ReviewedCharge = {
   offense?: string;
   arrestCode?: string;
@@ -273,16 +274,17 @@ async function copyImageToPublic(recordSlug: string, imageInfo: ImageInfo | null
 }
 
 function makeFacebookPostText(record: ReviewedRecord, publicUrl: string): string {
-  return [
-    "Ã°Å¸Å¡Â¨ BOOKING UPDATE Ã¢â‚¬â€ BIG SANDY AREA",
-    "",
-    `${record.fullName} was listed in a public booking record${record.intakeDate ? ` on ${new Date(record.intakeDate).toLocaleDateString()}` : ""}.`,
-    "",
-    "Full listed charges:",
+  return createFacebookRecordCaption(
+    {
+      displayName: record.fullName,
+      age: record.age,
+      recordDate: record.intakeDate,
+      arrestingAgency: record.arrestingAgency,
+      arrestingOfficer: record.arrestingOfficer,
+      charges: record.charges,
+    },
     publicUrl,
-    "",
-    "Charges are allegations. Individuals are presumed innocent unless proven guilty in court.",
-  ].join("\n");
+  );
 }
 
 async function createFacebookDraft(recordId: string, recordSlug: string, record: ReviewedRecord, imagePath?: string) {
@@ -376,6 +378,8 @@ export async function importApprovedFolder(options: ImportOptions) {
       displayName: record.fullName,
       age: record.age,
       gender: record.gender,
+      arrestingAgency: record.arrestingAgency,
+      arrestingOfficer: record.arrestingOfficer,
       county: record.countyArrested,
       recordDate: record.intakeDate ? new Date(record.intakeDate) : new Date(),
       status: record.status,

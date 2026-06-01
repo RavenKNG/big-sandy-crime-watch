@@ -1,4 +1,122 @@
-import type{Metadata}from"next";import{notFound}from"next/navigation";import Link from"next/link";import{AdSlot}from"@/components/AdSlot";import{formatDate,getPublishedRecords,getRecord,innocenceNotice}from"@/lib/content";import{getDb}from"@/lib/db";
-export const dynamic="force-dynamic";
-export async function generateMetadata({params}:{params:Promise<{slug:string}>}):Promise<Metadata>{const slug=(await params).slug;const stored=await getDb().publicRecordDemo.findUnique({where:{slug},select:{displayName:true,county:true,publishStatus:true}});const fixture=getRecord(slug);const name=stored?.publishStatus==="PUBLISHED"?stored.displayName:fixture?.displayName;if(!name)return{};const description=`Public-record demo listing for ${name}. Listed charges are allegations. Individuals are presumed innocent unless proven guilty in court.`;return{title:`${name} public-record demo`,description,alternates:{canonical:`/records/${slug}`},openGraph:{title:`${name} public-record demo`,description,url:`/records/${slug}`,type:"article"}}}
-export default async function RecordPage({params}:{params:Promise<{slug:string}>}){const slug=(await params).slug;const stored=await getDb().publicRecordDemo.findUnique({where:{slug},include:{charges:true}});const fixture=getRecord(slug);const r=stored?.publishStatus==="PUBLISHED"?{...stored,recordDate:stored.recordDate.toISOString(),sourceTimestamp:stored.sourceTimestamp.toISOString(),county:stored.county??"",status:stored.status??"",charges:stored.charges}:fixture;if(!r||("publishStatus"in r&&r.publishStatus!=="PUBLISHED"))notFound();const latest=getPublishedRecords().filter(x=>x.slug!==slug).slice(0,3);return <main><article className="content-card"><p className="eyebrow">PUBLIC-RECORD DEMO</p><h1>{r.displayName}</h1><p>{r.county} County - {formatDate(r.recordDate)}</p><div className="image-placeholder">{("imageUrl"in r&&r.imageUrl)?"IMAGE URL SAVED":"SYNTHETIC FIXTURE"}<br/>PUBLIC RECORD DEMO</div><AdSlot placement="detail-top"/><h2>Listed demo charges</h2>{r.charges.map((c,i)=><div className="charge" key={`${c.offense}-${i}`}><strong>{c.offense}</strong><p>{c.chargeDescription}</p>{c.statute&&<span className="pill">{c.statute}</span>}</div>)}<p className="notice">{innocenceNotice}</p><section className="charge"><h2>Source attribution</h2><p>Source: {r.sourceName}<br/>Timestamp: {new Date(r.sourceTimestamp).toISOString()}</p></section><Link className="button" href={`/correction-request?record=${r.slug}`}>Request correction or de-index review</Link><h2>Latest demo records</h2>{latest.map(x=><p key={x.slug}><Link href={`/records/${x.slug}`}>{x.displayName}</Link></p>)}</article></main>}
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import Link from "next/link";
+import { AdSlot } from "@/components/AdSlot";
+import { formatDate, getPublishedRecords, getRecord, innocenceNotice } from "@/lib/content";
+import { getDb } from "@/lib/db";
+
+export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const slug = (await params).slug;
+  const stored = await getDb().publicRecordDemo.findUnique({
+    where: { slug },
+    select: { displayName: true, county: true, publishStatus: true },
+  });
+  const fixture = getRecord(slug);
+  const name = stored?.publishStatus === "PUBLISHED" ? stored.displayName : fixture?.displayName;
+  if (!name) return {};
+
+  const description = `Public-record listing for ${name}. Listed charges are allegations. Individuals are presumed innocent unless proven guilty in court.`;
+  return {
+    title: `${name} public-record listing`,
+    description,
+    alternates: { canonical: `/records/${slug}` },
+    openGraph: { title: `${name} public-record listing`, description, url: `/records/${slug}`, type: "article" },
+  };
+}
+
+export default async function RecordPage({ params }: { params: Promise<{ slug: string }> }) {
+  const slug = (await params).slug;
+  const stored = await getDb().publicRecordDemo.findUnique({
+    where: { slug },
+    include: { charges: { orderBy: { displayOrder: "asc" } } },
+  });
+  const fixture = getRecord(slug);
+  const record =
+    stored?.publishStatus === "PUBLISHED"
+      ? {
+          ...stored,
+          recordDate: stored.recordDate.toISOString(),
+          sourceTimestamp: stored.sourceTimestamp.toISOString(),
+          county: stored.county ?? "",
+          status: stored.status ?? "",
+          arrestingAgency: stored.arrestingAgency ?? undefined,
+          arrestingOfficer: stored.arrestingOfficer ?? undefined,
+          charges: stored.charges,
+        }
+      : fixture;
+
+  if (!record || ("publishStatus" in record && record.publishStatus !== "PUBLISHED")) notFound();
+
+  const latest = getPublishedRecords().filter((item) => item.slug !== slug).slice(0, 3);
+  const imageReference = "imageUrl" in record && record.imageUrl;
+
+  return (
+    <main>
+      <article className="content-card">
+        <p className="eyebrow">PUBLIC BOOKING RECORD</p>
+        <h1>{record.displayName}</h1>
+        <div className="image-placeholder">
+          {imageReference ? "BOOKING IMAGE SAVED" : "PUBLIC RECORD"}
+          <br />
+          BOOKING DETAILS
+        </div>
+
+        <section className="booking-summary">
+          <h2>Booking summary</h2>
+          <p>
+            <strong>Booking date:</strong> {formatDate(record.recordDate)}
+          </p>
+          {record.age && <p><strong>Age:</strong> {record.age}</p>}
+          {record.county && <p><strong>County:</strong> {record.county}</p>}
+          {"arrestingAgency" in record && record.arrestingAgency && (
+            <p><strong>Arresting agency:</strong> {record.arrestingAgency}</p>
+          )}
+          {"arrestingOfficer" in record && record.arrestingOfficer && (
+            <p><strong>Arresting officer:</strong> {record.arrestingOfficer}</p>
+          )}
+        </section>
+
+        <AdSlot placement="detail-before-charges" />
+
+        <section className="charges-box">
+          <h2>Full listed charges</h2>
+          {record.charges.map((charge, index) => (
+            <div className="charge" key={`${charge.offense}-${index}`}>
+              <strong>{charge.offense}</strong>
+              <p>{charge.chargeDescription}</p>
+              {charge.statute && <span className="pill">{charge.statute}</span>}
+            </div>
+          ))}
+        </section>
+
+        <p className="notice">{innocenceNotice}</p>
+        <section className="charge">
+          <h2>Source attribution</h2>
+          <p>
+            Source: {record.sourceName}
+            <br />
+            Timestamp: {new Date(record.sourceTimestamp).toISOString()}
+          </p>
+        </section>
+        <Link className="button" href={`/correction-request?record=${record.slug}`}>
+          Request correction or de-index review
+        </Link>
+
+        <h2>Latest public records</h2>
+        {latest.map((item) => (
+          <p key={item.slug}>
+            <Link href={`/records/${item.slug}`}>{item.displayName}</Link>
+          </p>
+        ))}
+
+        <AdSlot placement="detail-lower" />
+      </article>
+    </main>
+  );
+}

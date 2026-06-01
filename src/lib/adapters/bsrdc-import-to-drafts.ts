@@ -14,7 +14,7 @@ export async function importNormalizedRecordAsDraft(record: NormalizedPublicReco
   if (existing) return { status: "skipped_duplicate" as const, id: existing.id, slug: existing.slug, warnings };
   const created = await db.publicRecordDemo.create({ data: {
     slug, displayName: record.fullName, age: record.age, gender: record.gender, county: record.countyArrested,
-    recordDate: record.intakeDate ? new Date(record.intakeDate) : new Date(), status: record.status,
+    recordDate: record.intakeDate ? new Date(record.intakeDate) : new Date(), status: record.status, arrestingAgency: record.arrestingAgency, arrestingOfficer: record.arrestingOfficer,
     sourceName: record.sourceName, sourceUrl: record.sourceUrl, sourceTimestamp: new Date(record.sourceTimestamp),
     imageUrl: record.bookingImageUrl, imageLocalPath: record.bookingImageLocalPath, publishStatus: "DRAFT",
     complianceNotes: [record.complianceNotes, `duplicateKey: ${dedupeKey(record)}`, `chargeHash: ${chargeHash(record.charges)}`].filter(Boolean).join("\n\n"),

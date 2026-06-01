@@ -2,6 +2,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { importApprovedFolder } from "../src/lib/approved-imports";
+import { createFacebookRecordCaption } from "../src/lib/facebook-record-caption";
 
 const ROOT = process.cwd();
 
@@ -162,22 +163,7 @@ async function createFacebookDraftsForPublishedRecords() {
     }
 
     const postUrl = `${siteUrl}/records/${record.slug}`;
-    const chargeLines = record.charges
-      .slice(0, 3)
-      .map((charge) => `â€¢ ${charge.chargeDescription}`)
-      .join("\n");
-
-    const postText = [
-      "ðŸš¨ Big Sandy public booking update",
-      "",
-      `${record.displayName} is listed in a public booking record.`,
-      "",
-      chargeLines ? `Listed charges:\n${chargeLines}` : "Listed charges are available at the link below.",
-      "",
-      `Full details: ${postUrl}`,
-      "",
-      "Charges are allegations. Individuals are presumed innocent unless proven guilty in court.",
-    ].join("\n");
+    const postText = createFacebookRecordCaption(record, postUrl);
 
     await prisma.facebookDraft.create({
       data: {
