@@ -367,8 +367,9 @@ export async function importOfficialRosterRecords(records: ParsedOfficialRecord[
       });
       const imageMissing = Boolean(record.imageId && !existing?.imageUrl && !existing?.imageLocalPath);
       if (existing?.sourceFingerprint === record.sourceFingerprint) {
+        let imagePath = existing.imageUrl ?? existing.imageLocalPath ?? undefined;
         if (imageMissing) {
-          const imagePath = await persistImage(record.slug, record.imageId);
+          imagePath = await persistImage(record.slug, record.imageId);
           if (imagePath) {
             await db.publicRecordDemo.update({
               where: { id: existing.id },
@@ -378,6 +379,12 @@ export async function importOfficialRosterRecords(records: ParsedOfficialRecord[
           } else {
             summary.missingImages += 1;
           }
+        }
+        if (imagePath) {
+          await db.facebookDraft.updateMany({
+            where: { recordId: existing.id, imageUrl: null },
+            data: { imageUrl: imagePath },
+          });
         }
         summary.duplicatesSkipped += 1;
         continue;

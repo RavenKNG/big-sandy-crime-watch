@@ -232,17 +232,24 @@ async function postNextFacebookDraft() {
     };
   }
 
-  const response = await fetch(`https://graph.facebook.com/v25.0/${pageId}/feed`, {
+  const siteUrl = (process.env.SITE_URL || "https://bigsandycrimewatch.com").replace(/\/$/, "");
+  const imageUrl = draft.imageUrl
+    ? new URL(draft.imageUrl, `${siteUrl}/`).toString()
+    : undefined;
+  const response = await fetch(
+    `https://graph.facebook.com/v25.0/${pageId}/${imageUrl ? "photos" : "feed"}`,
+    {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      message: draft.postText,
-      link: draft.postUrl,
-      access_token: pageToken,
-    }),
-  });
+    body: JSON.stringify(
+      imageUrl
+        ? { message: draft.postText, url: imageUrl, access_token: pageToken }
+        : { message: draft.postText, link: draft.postUrl, access_token: pageToken },
+    ),
+    },
+  );
 
   const json = await response.json();
 
@@ -266,7 +273,7 @@ async function postNextFacebookDraft() {
     },
     data: {
       status: "POSTED",
-      facebookPostId: json.id,
+      facebookPostId: json.post_id || json.id,
     },
   });
 
@@ -284,7 +291,7 @@ async function postNextFacebookDraft() {
   return {
     posted: true,
     draftId: draft.id,
-    facebookPostId: json.id,
+    facebookPostId: json.post_id || json.id,
   };
 }
 

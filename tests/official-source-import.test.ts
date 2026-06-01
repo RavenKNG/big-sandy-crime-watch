@@ -86,4 +86,10 @@ describe("official BSRDC public roster parser", () => {
     expect(runner).toContain('envBool("AUTOMATION_SKIP_INITIAL_FACEBOOK_POST", false)');
     expect(runner).toContain("setInterval(() => {\n    runOnce().catch");
   });
+
+  it("posts a mugshot through the Facebook photo endpoint when one is ready", async () => {
+    const runner = await readFile("scripts/automation-runner.ts", "utf8");
+    expect(runner).toContain('${imageUrl ? "photos" : "feed"}');
+    expect(runner).toContain("{ message: draft.postText, url: imageUrl, access_token: pageToken }");
+  });
 });
