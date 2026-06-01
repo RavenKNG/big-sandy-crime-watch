@@ -174,3 +174,18 @@ model PublishLog {
   message String
   createdAt DateTime @default(now())
 }
+
+model FacebookConnection {
+  id String @id @default("primary")
+  pageId String
+  pageName String
+  encryptedPageToken String
+  tokenStatus String @default("UNKNOWN")
+  tokenExpiresAt DateTime?
+  dataAccessExpiresAt DateTime?
+  lastHealthCheckAt DateTime?
+  lastSuccessfulPostAt DateTime?
+  lastFacebookError String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

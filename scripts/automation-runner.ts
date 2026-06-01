@@ -7,6 +7,7 @@ import { facebookRecordUrl } from "../src/lib/facebook-links";
 import { publishedRecordOrder } from "../src/lib/record-display";
 import { runOfficialSourceImport } from "../src/lib/official-source-import";
 import { verifyFacebookPageToken } from "../src/lib/facebook-token-health";
+import { getFacebookCredential, markFacebookPostResult, redactFacebookSecrets } from "../src/lib/facebook-connection";
 
 const ROOT = process.cwd();
 
@@ -205,11 +206,9 @@ async function postNextFacebookDraft() {
     };
   }
 
-  const pageId = process.env.FACEBOOK_PAGE_ID;
-  const pageToken =
-    process.env.FACEBOOK_TOKEN_STRATEGY === "system_user"
-      ? process.env.FACEBOOK_SYSTEM_USER_ACCESS_TOKEN
-      : process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
+  const credential = await getFacebookCredential();
+  const pageId = credential?.pageId;
+  const pageToken = credential?.pageToken;
 
   if (!pageId || !pageToken) {
     return {
@@ -259,6 +258,7 @@ async function postNextFacebookDraft() {
   const json = await response.json();
 
   if (!response.ok) {
+    const redactedJson = redactFacebookSecrets(json);
     const graphError = json as { error?: { code?: number } };
     const retryableCredentialError = graphError.error?.code === 190;
     await prisma.facebookDraft.update({
@@ -270,15 +270,16 @@ async function postNextFacebookDraft() {
         scheduledFor: retryableCredentialError
           ? new Date(Date.now() + envNum("POST_INTERVAL_HOURS", 3) * 60 * 60 * 1000)
           : draft.scheduledFor,
-        errorMessage: JSON.stringify(json),
+        errorMessage: JSON.stringify(redactedJson),
       },
     });
+    await markFacebookPostResult(redactedJson);
 
     return {
       posted: false,
       failed: true,
       retryable: retryableCredentialError,
-      error: JSON.stringify(json),
+      error: JSON.stringify(redactedJson),
       draftId: draft.id,
     };
   }
@@ -292,6 +293,7 @@ async function postNextFacebookDraft() {
       facebookPostId: json.post_id || json.id,
     },
   });
+  await markFacebookPostResult();
 
   if (draft.recordId) {
     await prisma.publicRecordDemo.update({
