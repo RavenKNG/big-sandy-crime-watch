@@ -29,11 +29,17 @@ function formatBookingDate(value?: Date | string | null): string | undefined {
 }
 
 function chargeTeaser(charges: CaptionCharge[], publicUrl: string): string {
+  if (
+    charges.length === 0 ||
+    charges.every((charge) => charge.chargeDescription.includes("Charges unavailable from source"))
+  ) {
+    return `Booking details available on the website: ${publicUrl}`;
+  }
   if (charges.length > 1) {
-    return `Multiple charges listed. Full details: ${publicUrl}`;
+    return `Booking details, county, and full charge list: ${publicUrl}`;
   }
 
-  return `Full charges and booking details available here: ${publicUrl}`;
+  return `Full booking details and charges available on the website: ${publicUrl}`;
 }
 
 export function createFacebookRecordCaption(
@@ -43,7 +49,7 @@ export function createFacebookRecordCaption(
   const bookingDate = formatBookingDate(record.recordDate);
 
   return [
-    "BOOKING UPDATE - BIG SANDY AREA",
+    "BIG SANDY REGIONAL BOOKING UPDATE",
     "",
     record.displayName,
     record.age ? `Age: ${record.age}` : undefined,

@@ -8,11 +8,12 @@ export function RecordCard({ record }: { record: DemoRecord }) {
     <article className="record-card">
       <Mugshot src={record.imageUrl} alt={`${record.displayName} booking image`} compact />
       <div>
-        <p className="eyebrow">{record.county ? `${record.county} County - ` : ""}{bookingDisplayText(record)}</p>
+        <p className="eyebrow">{bookingDisplayText(record)}</p>
         <h3>{record.displayName}</h3>
+        {record.county && <p><Link className="county-link" href={`/county/${record.county.toLowerCase()}`}>{record.county} County</Link></p>}
         {record.arrestingAgency && <p>{record.arrestingAgency}</p>}
-        <p className="count">{record.charges.length} listed charge{record.charges.length === 1 ? "" : "s"}. View full booking details.</p>
-        <Link className="button" href={`/records/${record.slug}`}>View Full Details</Link>
+        <p className="count">Full booking details available.</p>
+        <Link className="button" href={`/records/${record.slug}`}>View full booking details</Link>
       </div>
     </article>
   );

@@ -49,12 +49,17 @@ async function graphJson<T extends GraphError>(
 
 export async function verifyFacebookPageToken() {
   const pageId = process.env.FACEBOOK_PAGE_ID;
-  const pageToken = process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
+  const strategy = process.env.FACEBOOK_TOKEN_STRATEGY || "page_token";
+  const pageToken =
+    strategy === "system_user"
+      ? process.env.FACEBOOK_SYSTEM_USER_ACCESS_TOKEN
+      : process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
   if (!pageId || !pageToken) {
     return {
       healthy: false,
       configured: false,
-      actionRequired: "Configure the Facebook Page ID and Page access token.",
+      tokenStrategy: strategy,
+      actionRequired: "Configure the Facebook Page ID and posting access token.",
     };
   }
 
@@ -66,6 +71,7 @@ export async function verifyFacebookPageToken() {
     return {
       healthy: false,
       configured: true,
+      tokenStrategy: strategy,
       pageIdMatched: false,
       actionRequired: "Replace the invalid or expired Facebook Page access token.",
       error: safeGraphError(me.json),
@@ -82,7 +88,10 @@ export async function verifyFacebookPageToken() {
   const dataAccessExpiresAt = isoTimestamp(metadata?.data_access_expires_at);
   const expiresSoon =
     Boolean(metadata?.expires_at) &&
-    metadata!.expires_at! * 1000 < Date.now() + 7 * 24 * 60 * 60 * 1000;
+    metadata!.expires_at! * 1000 < Date.now() + 30 * 24 * 60 * 60 * 1000;
+  const criticalTokenExpiration =
+    Boolean(metadata?.expires_at) &&
+    metadata!.expires_at! * 1000 < Date.now() + 48 * 60 * 60 * 1000;
   const pageIdMatched = me.json.id === pageId;
   const pageNameMatched = me.json.name === EXPECTED_PAGE_NAME;
   const postingScopePresent = scopes.includes("pages_manage_posts");
@@ -98,6 +107,7 @@ export async function verifyFacebookPageToken() {
   return {
     healthy,
     configured: true,
+    tokenStrategy: strategy,
     pageIdMatched,
     pageNameMatched,
     pageName: me.json.name,
@@ -108,6 +118,8 @@ export async function verifyFacebookPageToken() {
     expiresAt,
     dataAccessExpiresAt,
     expiresSoon,
+    criticalTokenExpiration,
+    acceptableForLongRunningAutomation: healthy && !expiresSoon,
     postingScopePresent,
     scopes,
     actionRequired: !healthy

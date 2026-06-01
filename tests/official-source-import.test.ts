@@ -105,4 +105,12 @@ describe("official BSRDC public roster parser", () => {
     expect(runner).toContain("verifyFacebookPageToken()");
     expect(runner).toContain("Facebook Page token health check failed; queue preserved.");
   });
+
+  it("supports page-token and Business system-user credential strategies", async () => {
+    const health = await readFile("src/lib/facebook-token-health.ts", "utf8");
+    expect(health).toContain('process.env.FACEBOOK_TOKEN_STRATEGY || "page_token"');
+    expect(health).toContain("process.env.FACEBOOK_SYSTEM_USER_ACCESS_TOKEN");
+    expect(health).toContain("acceptableForLongRunningAutomation");
+    expect(health).toContain("criticalTokenExpiration");
+  });
 });

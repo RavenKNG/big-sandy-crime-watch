@@ -205,7 +205,10 @@ async function postNextFacebookDraft() {
   }
 
   const pageId = process.env.FACEBOOK_PAGE_ID;
-  const pageToken = process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
+  const pageToken =
+    process.env.FACEBOOK_TOKEN_STRATEGY === "system_user"
+      ? process.env.FACEBOOK_SYSTEM_USER_ACCESS_TOKEN
+      : process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
 
   if (!pageId || !pageToken) {
     return {

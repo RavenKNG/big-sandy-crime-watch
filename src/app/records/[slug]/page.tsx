@@ -23,12 +23,13 @@ export async function generateMetadata({
   const name = stored?.publishStatus === "PUBLISHED" ? stored.displayName : fixture?.displayName;
   if (!name) return {};
 
-  const description = `Public-record listing for ${name}. Listed charges are allegations. Individuals are presumed innocent unless proven guilty in court.`;
+  const county = stored?.county ? `${stored.county} County, KY` : "the Big Sandy region of Kentucky";
+  const description = `Booking information for ${name} in ${county}. County, full charges, and booking details are available from public source records. Individuals are presumed innocent unless proven guilty.`;
   return {
-    title: `${name} public-record listing`,
+    title: `${name} Booking Record - ${stored?.county ? `${stored.county} County, KY` : "Big Sandy Region"}`,
     description,
     alternates: { canonical: `/records/${slug}` },
-    openGraph: { title: `${name} public-record listing`, description, url: `/records/${slug}`, type: "article" },
+    openGraph: { title: `${name} Booking Record - Big Sandy Region`, description, url: `/records/${slug}`, type: "article" },
   };
 }
 
@@ -61,7 +62,7 @@ export default async function RecordPage({ params }: { params: Promise<{ slug: s
 
   const latest = await getDb().publicRecordDemo.findMany({
     where: { publishStatus: "PUBLISHED", slug: { not: slug } },
-    select: { slug: true, displayName: true },
+    select: { slug: true, displayName: true, county: true },
     orderBy: publishedRecordOrder,
     take: 3,
   });
@@ -94,7 +95,7 @@ export default async function RecordPage({ params }: { params: Promise<{ slug: s
         <AdSlot placement="detail-before-charges" />
 
         <section className="charges-box">
-          <h2>Full listed charges</h2>
+          <h2>Charges Listed</h2>
           {record.charges.map((charge, index) => (
             <div className="charge" key={`${charge.offense}-${index}`}>
               <strong>{charge.offense}</strong>
@@ -117,12 +118,16 @@ export default async function RecordPage({ params }: { params: Promise<{ slug: s
           Request correction or de-index review
         </Link>
 
-        <h2>Latest public records</h2>
-        {latest.map((item) => (
-          <p key={item.slug}>
-            <Link href={`/records/${item.slug}`}>{item.displayName}</Link>
-          </p>
-        ))}
+        <section className="related-records">
+          <h2>Latest public records</h2>
+          {record.county&&<p><Link className="county-link" href={`/county/${record.county.toLowerCase()}`}>Browse more {record.county} County records</Link></p>}
+          {latest.map((item) => (
+            <p key={item.slug}>
+              <Link href={`/records/${item.slug}`}>{item.displayName}{item.county?` - ${item.county} County`:""}</Link>
+            </p>
+          ))}
+          <p><Link href="/today">Browse today&apos;s regional bookings</Link></p>
+        </section>
 
         <AdSlot placement="detail-lower" />
       </article>

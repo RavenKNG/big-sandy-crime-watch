@@ -20,12 +20,13 @@ describe("Facebook record captions", () => {
       publicUrl,
     );
 
-    expect(caption).toContain("BOOKING UPDATE - BIG SANDY AREA");
+    expect(caption).toContain("BIG SANDY REGIONAL BOOKING UPDATE");
+    expect(caption).not.toContain("BIG SANDY AREA");
     expect(caption).toContain("Example Person");
     expect(caption).toContain("Age: 33");
     expect(caption).toContain("Arresting agency: Example Agency");
     expect(caption).toContain("Arresting officer: Officer Example");
-    expect(caption).toContain(`Multiple charges listed. Full details: ${publicUrl}`);
+    expect(caption).toContain(`Booking details, county, and full charge list: ${publicUrl}`);
     expect(caption).not.toContain("First full charge description");
     expect(caption).not.toContain("Second full charge description");
   });
@@ -39,7 +40,7 @@ describe("Facebook record captions", () => {
       publicUrl,
     );
 
-    expect(caption).toContain(`Full charges and booking details available here: ${publicUrl}`);
+    expect(caption).toContain(`Full booking details and charges available on the website: ${publicUrl}`);
     expect(caption).not.toContain("Full single charge text");
     expect(caption).toContain(
       "Charges are allegations. Individuals are presumed innocent unless proven guilty in court.",

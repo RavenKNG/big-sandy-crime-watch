@@ -20,7 +20,7 @@ export default async function Home() {
   return (
     <main>
       <section className="hero">
-        <p className="eyebrow">BIG SANDY AREA PUBLIC-SAFETY DESK</p>
+        <p className="eyebrow">BIG SANDY REGIONAL PUBLIC-SAFETY DESK</p>
         <h1>Local records. <span>Clear context.</span></h1>
         <p>Carefully attributed public booking records with free correction, hide, and de-index review requests.</p>
         <div className="button-row">
@@ -41,7 +41,7 @@ export default async function Home() {
       </section>
       <section id="latest-records">
         <div className="section-heading">
-          <div><p className="eyebrow">LATEST PUBLIC RECORDS</p><h2>Recent bookings</h2></div>
+          <div><p className="eyebrow">LATEST PUBLIC RECORDS</p><h2>Latest Big Sandy Regional Bookings</h2></div>
           <Link href="/category/bookings">Browse bookings</Link>
         </div>
         {records.length === 0 ? <p>No published booking records are available.</p> : <div className="record-grid">{records.map((record, index) => <div key={record.slug}><RecordCard record={record} />{index === 0 && <AdSlot placement="in-feed" />}</div>)}</div>}

@@ -24,6 +24,8 @@
     "fb:dry-run": "tsx scripts/facebook-dry-run.ts",
     "fb:post-next": "tsx scripts/facebook-dry-run.ts --post-next",
     "fb:verify-token": "tsx scripts/verify-facebook-token.ts",
+    "fb:exchange-long-lived": "tsx scripts/exchange-facebook-long-lived-token.ts",
+    "fb:refresh-captions": "tsx scripts/refresh-facebook-captions.ts",
     "scheduler:start": "tsx scripts/scheduler.ts",
     "automation:once": "tsx scripts/automation-runner.ts --once",
     "automation:start": "tsx scripts/automation-runner.ts",
