@@ -2,9 +2,10 @@
   "name": "big-sandy-crime-watch",
   "version": "0.1.0",
   "private": true,
-  "scripts": {"import:approved-folder": "tsx scripts/import-approved-folder.ts",
-"reviewed-import:watch": "tsx scripts/watch-approved-imports.ts",
-"reviewed-import:scan": "tsx scripts/watch-approved-imports.ts --once",
+  "scripts": {
+    "import:approved-folder": "tsx scripts/import-approved-folder.ts",
+    "reviewed-import:watch": "tsx scripts/watch-approved-imports.ts",
+    "reviewed-import:scan": "tsx scripts/watch-approved-imports.ts --once",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
@@ -22,7 +23,9 @@
     "bsrdc:map-file": "tsx scripts/bsrdc-map-file.ts",
     "fb:dry-run": "tsx scripts/facebook-dry-run.ts",
     "fb:post-next": "tsx scripts/facebook-dry-run.ts --post-next",
-    "scheduler:start": "tsx scripts/scheduler.ts"
+    "scheduler:start": "tsx scripts/scheduler.ts",
+    "automation:once": "tsx scripts/automation-runner.ts --once",
+    "automation:start": "tsx scripts/automation-runner.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",
@@ -46,4 +49,3 @@
     "vitest": "^4.1.7"
   }
 }
-
