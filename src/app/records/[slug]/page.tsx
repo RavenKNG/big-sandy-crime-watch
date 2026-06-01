@@ -17,7 +17,7 @@ export async function generateMetadata({
   const slug = (await params).slug;
   const stored = await getDb().publicRecordDemo.findUnique({
     where: { slug },
-    select: { displayName: true, county: true, publishStatus: true },
+    select: { displayName: true, county: true, publishStatus: true, imageUrl: true, imageLocalPath: true },
   });
   const fixture = process.env.NODE_ENV === "production" ? undefined : getRecord(slug);
   const name = stored?.publishStatus === "PUBLISHED" ? stored.displayName : fixture?.displayName;
@@ -29,7 +29,7 @@ export async function generateMetadata({
     title: `${name} Booking Record - ${stored?.county ? `${stored.county} County, KY` : "Big Sandy Region"}`,
     description,
     alternates: { canonical: `/records/${slug}` },
-    openGraph: { title: `${name} Booking Record - Big Sandy Region`, description, url: `/records/${slug}`, type: "article" },
+    openGraph: { title: `${name} Booking Record - Big Sandy Region`, description, url: `/records/${slug}`, type: "article", images: stored?.imageUrl ?? stored?.imageLocalPath ? [{ url: stored.imageUrl ?? stored.imageLocalPath! }] : undefined },
   };
 }
 

@@ -3,6 +3,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { getDb } from "./db";
 import { createFacebookRecordCaption } from "./facebook-record-caption";
+import { facebookRecordUrl } from "./facebook-links";
 
 export const OFFICIAL_SOURCE_NAME = "Big Sandy Regional Detention Center Public Roster";
 export const OFFICIAL_ROSTER_URL =
@@ -335,7 +336,7 @@ async function createFacebookDraft(record: {
   const db = getDb();
   const existing = await db.facebookDraft.findFirst({ where: { recordId: record.id } });
   if (existing) return { created: false, id: existing.id };
-  const postUrl = `${(process.env.SITE_URL || "https://bigsandycrimewatch.com").replace(/\/$/, "")}/records/${record.slug}`;
+  const postUrl = facebookRecordUrl(record.slug, process.env.SITE_URL);
   const draft = await db.facebookDraft.create({
     data: {
       recordId: record.id,

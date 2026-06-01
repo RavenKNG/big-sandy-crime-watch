@@ -3,6 +3,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { importApprovedFolder } from "../src/lib/approved-imports";
 import { createFacebookRecordCaption } from "../src/lib/facebook-record-caption";
+import { facebookRecordUrl } from "../src/lib/facebook-links";
 import { publishedRecordOrder } from "../src/lib/record-display";
 import { runOfficialSourceImport } from "../src/lib/official-source-import";
 import { verifyFacebookPageToken } from "../src/lib/facebook-token-health";
@@ -164,7 +165,7 @@ async function createFacebookDraftsForPublishedRecords() {
       continue;
     }
 
-    const postUrl = `${siteUrl}/records/${record.slug}`;
+    const postUrl = facebookRecordUrl(record.slug, siteUrl);
     const postText = createFacebookRecordCaption(record, postUrl);
 
     await prisma.facebookDraft.create({

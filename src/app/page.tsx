@@ -21,11 +21,11 @@ export default async function Home() {
     <main>
       <section className="hero">
         <p className="eyebrow">BIG SANDY REGIONAL PUBLIC-SAFETY DESK</p>
-        <h1>Local records. <span>Clear context.</span></h1>
-        <p className="hero-kicker">Regional public booking updates</p>
-        <p>Updated throughout the day from attributed public booking records. Free correction, hide, and de-index review requests are available.</p>
+        <h1>Big Sandy <span>Crime Watch.</span></h1>
+        <p className="hero-kicker">Public booking updates from the Big Sandy region</p>
+        <p>Updated throughout the day from public booking records. Free correction, hide, and de-index review requests are available.</p>
         <div className="button-row">
-          <Link className="button" href="/today">Today</Link>
+          <Link className="button" href="/today">Today&apos;s Bookings</Link>
           <Link className="secondary-button" href="/last-72-hours">Last 72 Hours</Link>
           <Link className="secondary-button" href="/category/bookings">Booking Archive</Link>
           <Link className="secondary-button" href="/correction-request">Request a correction</Link>
@@ -47,6 +47,7 @@ export default async function Home() {
         </div>
         {records.length === 0 ? <p>No published booking records are available.</p> : <div className="record-grid">{records.map((record, index) => <div key={record.slug}><RecordCard record={record} />{index === 5 && <AdSlot placement="in-feed" />}</div>)}</div>}
       </section>
+      <AdSlot placement="homepage-lower" />
       <p className="policy-links"><Link href="/disclaimer">Disclaimer</Link> | <Link href="/correction-request">Correction requests</Link> | <Link href="/privacy">Privacy</Link> | <Link href="/admin">Admin sign-in</Link></p>
     </main>
   );

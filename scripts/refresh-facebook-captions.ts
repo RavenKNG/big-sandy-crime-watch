@@ -1,5 +1,6 @@
 import { prisma } from "../src/lib/prisma-runtime";
 import { createFacebookRecordCaption } from "../src/lib/facebook-record-caption";
+import { facebookRecordUrl } from "../src/lib/facebook-links";
 
 async function main() {
   const drafts = await prisma.facebookDraft.findMany({
@@ -11,7 +12,10 @@ async function main() {
     if (!draft.record) continue;
     await prisma.facebookDraft.update({
       where: { id: draft.id },
-      data: { postText: createFacebookRecordCaption(draft.record, draft.postUrl) },
+      data: {
+        postText: createFacebookRecordCaption(draft.record, facebookRecordUrl(draft.record.slug)),
+        postUrl: facebookRecordUrl(draft.record.slug),
+      },
     });
     updated += 1;
   }

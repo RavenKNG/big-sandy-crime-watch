@@ -6,6 +6,7 @@ import { JsonFixtureImporter, parseCsv, validateDemoRecords } from "../src/lib/i
 import { articles, demoRecords } from "../src/lib/demo-data";
 import type { DemoRecord } from "../src/lib/types";
 import { correctionFormSchema, parseChargeLines, recordFormSchema } from "../src/lib/forms";
+import { readFile } from "node:fs/promises";
 
 describe("demo CMS foundation", () => {
   it("creates clean slugs", () => expect(slugify(" Big Sandy: Public Safety! ")).toBe("big-sandy-public-safety"));
@@ -27,4 +28,8 @@ describe("demo CMS foundation", () => {
   it("validates correction submissions",()=>expect(correctionFormSchema.parse({name:"Jane Doe",email:"jane@example.test",requestType:"CORRECTION",relatedUrl:"",message:"Please review this demo entry."}).requestType).toBe("CORRECTION"));
   it("keeps careful presumption-of-innocence language in record drafts",()=>expect(createRecordDraft(demoRecords[0])).toContain("presumed innocent unless proven guilty"));
   it("keeps sponsor placeholders disabled in configuration",()=>expect(process.env.ADS_ENABLED).not.toBe("true"));
+  it("keeps public search limited to published records",async()=>expect(await readFile("src/app/search/page.tsx","utf8")).toContain('publishStatus: "PUBLISHED"'));
+  it("keeps the detail funnel and restrained ad placements",async()=>{const detail=await readFile("src/app/records/[slug]/page.tsx","utf8");expect(detail.indexOf('placement="detail-before-charges"')).toBeLessThan(detail.indexOf("<h2>Charges Listed</h2>"));expect(detail).toContain('placement="detail-lower"')});
+  it("gates analytics behind explicit GA4 configuration",async()=>{const analytics=await readFile("src/components/Analytics.tsx","utf8");expect(analytics).toContain('process.env.ANALYTICS_ENABLED !== "true"');expect(analytics).toContain('process.env.ANALYTICS_PROVIDER !== "ga4"')});
+  it("provides a config-driven local sponsor slot",async()=>{const sponsor=await readFile("src/components/LocalSponsorSlot.tsx","utf8");expect(sponsor).toContain('aria-label="Sponsored"');expect(sponsor).not.toContain("Big Sandy Sponsor")});
 });

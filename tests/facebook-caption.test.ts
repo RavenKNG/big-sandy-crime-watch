@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createFacebookRecordCaption } from "../src/lib/facebook-record-caption";
+import { createFacebookRoundupCaption, facebookRecordUrl, facebookRoundupUrl } from "../src/lib/facebook-links";
 
 const publicUrl = "https://bigsandycrimewatch.com/records/example-record";
 
@@ -45,5 +46,21 @@ describe("Facebook record captions", () => {
     expect(caption).toContain(
       "Charges are allegations. Individuals are presumed innocent unless proven guilty in court.",
     );
+  });
+
+  it("adds consistent Facebook campaign tags to public record links", () => {
+    expect(facebookRecordUrl("example-record")).toBe(
+      "https://bigsandycrimewatch.com/records/example-record?utm_source=facebook&utm_medium=social&utm_campaign=booking_update&utm_content=record",
+    );
+  });
+
+  it("creates careful non-posting roundup captions with tagged links", () => {
+    const today = createFacebookRoundupCaption("today");
+    const recent = createFacebookRoundupCaption("last_72_hours");
+    expect(today).toContain("BIG SANDY REGIONAL BOOKING ROUNDUP");
+    expect(today).toContain(facebookRoundupUrl("today"));
+    expect(recent).toContain("LAST 72 HOURS: BIG SANDY BOOKING UPDATES");
+    expect(recent).toContain(facebookRoundupUrl("last_72_hours"));
+    expect(today).not.toContain("look who got caught");
   });
 });

@@ -113,4 +113,11 @@ describe("official BSRDC public roster parser", () => {
     expect(health).toContain("acceptableForLongRunningAutomation");
     expect(health).toContain("criticalTokenExpiration");
   });
+
+  it("queues tagged public record URLs for future Facebook posts", async () => {
+    const runner = await readFile("scripts/automation-runner.ts", "utf8");
+    const source = await readFile("src/lib/official-source-import.ts", "utf8");
+    expect(runner).toContain("facebookRecordUrl(record.slug, siteUrl)");
+    expect(source).toContain("facebookRecordUrl(record.slug, process.env.SITE_URL)");
+  });
 });

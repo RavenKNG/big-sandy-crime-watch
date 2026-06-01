@@ -1,1 +1,1 @@
-export function AdSlot({placement}:{placement:string}){return <aside className="ad-slot" aria-label={`${placement} sponsor placement`}><strong>SPONSOR SPACE</strong><span>Local sponsorship placement</span></aside>}
+export function AdSlot({placement}:{placement:string}){return <aside className="ad-slot" aria-label={`${placement} sponsor placement`}><small>Sponsored</small><strong>SPONSOR SPACE</strong><span>Local sponsorship placement</span></aside>}
