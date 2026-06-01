@@ -1,3 +1,4 @@
+﻿import { prisma } from "./prisma-runtime";
 import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -273,7 +274,7 @@ async function copyImageToPublic(recordSlug: string, imageInfo: ImageInfo | null
 
 function makeFacebookPostText(record: ReviewedRecord, publicUrl: string): string {
   return [
-    "ðŸš¨ BOOKING UPDATE â€” BIG SANDY AREA",
+    "Ã°Å¸Å¡Â¨ BOOKING UPDATE Ã¢â‚¬â€ BIG SANDY AREA",
     "",
     `${record.fullName} was listed in a public booking record${record.intakeDate ? ` on ${new Date(record.intakeDate).toLocaleDateString()}` : ""}.`,
     "",

@@ -1,3 +1,4 @@
+﻿import { prisma } from "../src/lib/prisma-runtime";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { importApprovedFolder } from "../src/lib/approved-imports";
@@ -163,11 +164,11 @@ async function createFacebookDraftsForPublishedRecords() {
     const postUrl = `${siteUrl}/records/${record.slug}`;
     const chargeLines = record.charges
       .slice(0, 3)
-      .map((charge) => `• ${charge.chargeDescription}`)
+      .map((charge) => `â€¢ ${charge.chargeDescription}`)
       .join("\n");
 
     const postText = [
-      "🚨 Big Sandy public booking update",
+      "ðŸš¨ Big Sandy public booking update",
       "",
       `${record.displayName} is listed in a public booking record.`,
       "",
@@ -269,7 +270,7 @@ async function postNextFacebookDraft() {
       },
     });
 
-    throw new Error(`Facebook post failed: ${JSON.stringify(json)}`);
+    return { posted: false, failed: true, error: JSON.stringify(json), draftId: draft.id };
   }
 
   await prisma.facebookDraft.update({
@@ -356,3 +357,4 @@ main().catch(async (error) => {
   await prisma.$disconnect();
   process.exit(1);
 });
+
