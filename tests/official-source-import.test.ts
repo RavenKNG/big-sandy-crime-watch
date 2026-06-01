@@ -23,7 +23,7 @@ describe("official BSRDC public roster parser", () => {
     expect(record.arrestingAgency).toBe("Fixture Agency");
     expect(record.arrestingOfficer).toBe("Officer Fixture");
     expect(record.county).toBe("Johnson");
-    expect(record.imageId).toBe("101");
+    expect(record.imageId).toBe("fixture-mugshot.jpg");
     expect(record.charges[0].chargeDescription).toBe("Synthetic listed charge");
   });
 

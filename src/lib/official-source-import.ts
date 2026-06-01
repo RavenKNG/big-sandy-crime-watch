@@ -240,7 +240,7 @@ export function parseOfficialRosterRows(rows: VendorRosterRow[]): ParsedOfficial
       sourceName: OFFICIAL_SOURCE_NAME,
       sourceUrl,
       sourceTimestamp: Number.isNaN(sourceTimestamp.getTime()) ? new Date() : sourceTimestamp,
-      imageId: row.hasImage ? String(row.id) : undefined,
+      imageId: row.hasImage ? text(row.imageUri) : undefined,
       charges: recordCharges,
     };
     return [{ ...parsed, sourceFingerprint: fingerprint(parsed) }];
@@ -298,9 +298,18 @@ export async function fetchOfficialRoster(fromDate: string, toDate: string) {
 
 async function persistImage(slug: string, imageId?: string) {
   if (!imageId) return undefined;
-  const response = await fetchWithTimeout(
-    `${officialApiRoot()}/${OFFICIAL_AGENCY_CODE}/get-image-bytes/${encodeURIComponent(imageId)}`,
+  const sasResponse = await fetchWithTimeout(
+    `${officialApiRoot()}/${OFFICIAL_AGENCY_CODE}/get-sas-image-url/${encodeURIComponent(imageId)}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ recaptchaToken: null }),
+    },
   );
+  if (!sasResponse.ok) return undefined;
+  const sasJson = (await sasResponse.json()) as { url?: unknown };
+  if (typeof sasJson.url !== "string" || !sasJson.url) return undefined;
+  const response = await fetchWithTimeout(sasJson.url);
   if (!response.ok) return undefined;
   const contentType = response.headers.get("content-type") ?? "";
   const extension = contentType.includes("png") ? ".png" : ".jpg";
@@ -357,7 +366,19 @@ export async function importOfficialRosterRecords(records: ParsedOfficialRecord[
         include: { charges: true },
       });
       const imageMissing = Boolean(record.imageId && !existing?.imageUrl && !existing?.imageLocalPath);
-      if (existing?.sourceFingerprint === record.sourceFingerprint && !imageMissing) {
+      if (existing?.sourceFingerprint === record.sourceFingerprint) {
+        if (imageMissing) {
+          const imagePath = await persistImage(record.slug, record.imageId);
+          if (imagePath) {
+            await db.publicRecordDemo.update({
+              where: { id: existing.id },
+              data: { imageUrl: imagePath, imageLocalPath: imagePath },
+            });
+            summary.imagesSaved += 1;
+          } else {
+            summary.missingImages += 1;
+          }
+        }
         summary.duplicatesSkipped += 1;
         continue;
       }
