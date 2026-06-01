@@ -26,7 +26,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body><SiteHeader />{children}<footer><strong>Big Sandy Crime Watch</strong><p>Public-safety news and public-record transparency demo.</p></footer></body>
+      <body><SiteHeader />{children}<footer><strong>Big Sandy Crime Watch</strong><p>Regional public-safety news and attributed public booking records.</p></footer></body>
     </html>
   );
 }
