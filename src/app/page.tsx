@@ -1,3 +1,52 @@
-import Link from"next/link";import{AdSlot}from"@/components/AdSlot";import{RecordCard}from"@/components/RecordCard";import{articles}from"@/lib/demo-data";import{formatDate,getPublishedRecords}from"@/lib/content";import{getDb}from"@/lib/db";import type{DemoRecord}from"@/lib/types";
-export const dynamic="force-dynamic";
-export default async function Home(){const stored=await getDb().publicRecordDemo.findMany({where:{publishStatus:"PUBLISHED"},include:{charges:true},orderBy:{recordDate:"desc"}});const persisted:DemoRecord[]=stored.map(r=>({slug:r.slug,displayName:r.displayName,age:r.age??undefined,gender:r.gender??undefined,county:r.county??"",recordDate:r.recordDate.toISOString(),status:r.status??"",sourceName:r.sourceName,sourceUrl:r.sourceUrl??undefined,sourceTimestamp:r.sourceTimestamp.toISOString(),imageUrl:r.imageUrl??undefined,publishStatus:r.publishStatus,charges:r.charges.map(c=>({offense:c.offense,statute:c.statute??undefined,chargeDescription:c.chargeDescription,caseNumber:c.caseNumber??undefined}))}));const fixtureSlugs=new Set(persisted.map(r=>r.slug));const records=[...persisted,...getPublishedRecords().filter(r=>!fixtureSlugs.has(r.slug))];return <main><section className="hero"><p className="eyebrow">BIG SANDY AREA PUBLIC-SAFETY DESK</p><h1>Local records. <span>Clear context.</span></h1><p>Public-safety updates and carefully attributed public-record demo listings with free correction, hide, and de-index review requests.</p><div className="button-row"><Link className="button" href="#latest-records">Latest Public Records</Link><Link className="secondary-button" href="/correction-request">Request a correction</Link></div></section><AdSlot placement="mobile-top-banner"/><section><div className="section-heading"><div><p className="eyebrow">LATEST UPDATES</p><h2>Public-safety news</h2></div><Link href="/category/public-safety">Browse updates</Link></div><div className="article-grid">{articles.map(a=><article className="news-card" key={a.slug}><p className="eyebrow">{a.category} - {formatDate(a.publishedAt)}</p><h3>{a.title}</h3><p>{a.summary}</p><Link href={`/news/${a.slug}`}>Read update</Link></article>)}</div></section><section id="latest-records"><div className="section-heading"><div><p className="eyebrow">LATEST PUBLIC RECORDS</p><h2>Public-record demo listings</h2></div><Link href="/disclaimer">Read disclaimer</Link></div><div className="record-grid">{records.map((r,i)=><div key={r.slug}><RecordCard record={r}/>{i===0&&<AdSlot placement="in-feed"/>}</div>)}</div></section><p className="policy-links"><Link href="/disclaimer">Disclaimer</Link> · <Link href="/correction-request">Correction requests</Link> · <Link href="/privacy">Privacy</Link></p></main>}
+import Link from "next/link";
+import { AdSlot } from "@/components/AdSlot";
+import { RecordCard } from "@/components/RecordCard";
+import { articles } from "@/lib/demo-data";
+import { formatDate } from "@/lib/content";
+import { getDb } from "@/lib/db";
+import { publishedRecordOrder, storedRecordToDemoRecord } from "@/lib/record-display";
+
+export const dynamic = "force-dynamic";
+
+export default async function Home() {
+  const stored = await getDb().publicRecordDemo.findMany({
+    where: { publishStatus: "PUBLISHED" },
+    include: { charges: { orderBy: { displayOrder: "asc" } } },
+    orderBy: publishedRecordOrder,
+    take: 30,
+  });
+  const records = stored.map(storedRecordToDemoRecord);
+
+  return (
+    <main>
+      <section className="hero">
+        <p className="eyebrow">BIG SANDY AREA PUBLIC-SAFETY DESK</p>
+        <h1>Local records. <span>Clear context.</span></h1>
+        <p>Carefully attributed public booking records with free correction, hide, and de-index review requests.</p>
+        <div className="button-row">
+          <Link className="button" href="/today">Today&apos;s Arrests</Link>
+          <Link className="secondary-button" href="#latest-records">Latest Public Records</Link>
+          <Link className="secondary-button" href="/correction-request">Request a correction</Link>
+        </div>
+      </section>
+      <AdSlot placement="mobile-top-banner" />
+      <section>
+        <div className="section-heading">
+          <div><p className="eyebrow">LATEST UPDATES</p><h2>Public-safety news</h2></div>
+          <Link href="/category/public-safety">Browse updates</Link>
+        </div>
+        <div className="article-grid">
+          {articles.map((article) => <article className="news-card" key={article.slug}><p className="eyebrow">{article.category} - {formatDate(article.publishedAt)}</p><h3>{article.title}</h3><p>{article.summary}</p><Link href={`/news/${article.slug}`}>Read update</Link></article>)}
+        </div>
+      </section>
+      <section id="latest-records">
+        <div className="section-heading">
+          <div><p className="eyebrow">LATEST PUBLIC RECORDS</p><h2>Recent bookings</h2></div>
+          <Link href="/category/bookings">Browse bookings</Link>
+        </div>
+        {records.length === 0 ? <p>No published booking records are available.</p> : <div className="record-grid">{records.map((record, index) => <div key={record.slug}><RecordCard record={record} />{index === 0 && <AdSlot placement="in-feed" />}</div>)}</div>}
+      </section>
+      <p className="policy-links"><Link href="/disclaimer">Disclaimer</Link> · <Link href="/correction-request">Correction requests</Link> · <Link href="/privacy">Privacy</Link></p>
+    </main>
+  );
+}

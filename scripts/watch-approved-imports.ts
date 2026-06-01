@@ -57,14 +57,15 @@ async function scanOnce() {
   for (const folderEntry of folders) {
     const folder = path.join(inputRoot, folderEntry.name);
     const recordPath = path.join(folder, "record.json");
+    const csvPath = path.join(folder, "record.csv");
 
-    if (!(await exists(recordPath))) {
+    if (!(await exists(recordPath)) && !(await exists(csvPath))) {
       console.log(
         JSON.stringify({
           ok: false,
           folder,
           skipped: true,
-          reason: "Missing record.json.",
+          reason: "Missing record.json or record.csv.",
         }),
       );
       continue;

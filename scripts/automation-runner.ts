@@ -3,6 +3,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { importApprovedFolder } from "../src/lib/approved-imports";
 import { createFacebookRecordCaption } from "../src/lib/facebook-record-caption";
+import { publishedRecordOrder } from "../src/lib/record-display";
 
 const ROOT = process.cwd();
 
@@ -63,13 +64,14 @@ async function scanApprovedImports() {
 
   for (const folder of folders) {
     const recordJson = path.join(folder, "record.json");
+    const recordCsv = path.join(folder, "record.csv");
 
-    if (!(await exists(recordJson))) {
+    if (!(await exists(recordJson)) && !(await exists(recordCsv))) {
       results.push({
         ok: false,
         folder,
         skipped: true,
-        reason: "Missing record.json",
+        reason: "Missing record.json or record.csv",
       });
       continue;
     }
@@ -141,9 +143,7 @@ async function createFacebookDraftsForPublishedRecords() {
         },
       },
     },
-    orderBy: {
-      recordDate: "desc",
-    },
+    orderBy: publishedRecordOrder,
     take: 50,
   });
 

@@ -3,7 +3,7 @@ import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { createFacebookRecordCaption } from "./facebook-record-caption";
-type ReviewedCharge = {
+export type ReviewedCharge = {
   offense?: string;
   arrestCode?: string;
   statute?: string;
@@ -14,17 +14,22 @@ type ReviewedCharge = {
   displayOrder?: number;
 };
 
-type ReviewedRecord = {
+export type ReviewedRecord = {
   fullName: string;
   age?: number;
   gender?: string;
+  city?: string;
   race?: string;
   status?: string;
   intakeDate?: string;
+  bookingDateTimeText?: string;
+  bookingTimeKnown?: boolean;
   releaseDate?: string;
+  sourceRecordId?: string;
   offenderId?: string;
   permanentId?: string;
   countyArrested?: string;
+  state?: string;
   arrestingAgency?: string;
   arrestingOfficer?: string;
   sourceName: string;
@@ -61,7 +66,99 @@ function normalizeText(value: unknown): string | undefined {
   return clean.length ? clean : undefined;
 }
 
-function normalizeRecord(raw: ReviewedRecord): ReviewedRecord {
+function parseCsvLine(line: string): string[] {
+  const cells: string[] = [];
+  let cell = "";
+  let quoted = false;
+
+  for (let index = 0; index < line.length; index += 1) {
+    const character = line[index];
+    if (character === '"') {
+      if (quoted && line[index + 1] === '"') {
+        cell += '"';
+        index += 1;
+      } else {
+        quoted = !quoted;
+      }
+    } else if (character === "," && !quoted) {
+      cells.push(cell.trim());
+      cell = "";
+    } else {
+      cell += character;
+    }
+  }
+
+  cells.push(cell.trim());
+  return cells;
+}
+
+export function parseReviewedCsv(input: string): ReviewedRecord {
+  const lines = input.split(/\r?\n/).filter((line) => line.trim().length > 0);
+  if (lines.length < 2) throw new Error("record.csv must include a header and at least one row.");
+
+  const headers = parseCsvLine(lines[0]);
+  const rows = lines.slice(1).map((line) => {
+    const cells = parseCsvLine(line);
+    return Object.fromEntries(headers.map((header, index) => [header, cells[index] || undefined]));
+  });
+  const first = rows[0];
+
+  return {
+    fullName: first.fullName ?? "",
+    age: first.age ? Number.parseInt(first.age, 10) : undefined,
+    gender: first.gender,
+    city: first.city,
+    state: first.state,
+    status: first.status,
+    intakeDate: first.intakeDate,
+    bookingDateTimeText: first.bookingDateTimeText,
+    bookingTimeKnown: first.bookingTimeKnown ? first.bookingTimeKnown.toLowerCase() === "true" : undefined,
+    releaseDate: first.releaseDate,
+    sourceRecordId: first.sourceRecordId,
+    offenderId: first.offenderId,
+    permanentId: first.permanentId,
+    countyArrested: first.countyArrested,
+    arrestingAgency: first.arrestingAgency,
+    arrestingOfficer: first.arrestingOfficer,
+    sourceName: first.sourceName ?? "",
+    sourceUrl: first.sourceUrl ?? "",
+    sourceTimestamp: first.sourceTimestamp,
+    imageUrl: first.imageUrl,
+    imageLocalPath: first.imageLocalPath,
+    complianceNotes: first.complianceNotes,
+    charges: rows.map((row, index) => ({
+      offense: row.offense,
+      arrestCode: row.arrestCode,
+      statute: row.statute,
+      chargeDescription: row.chargeDescription ?? "",
+      status: row.chargeStatus,
+      caseNumber: row.caseNumber,
+      controlNumber: row.controlNumber,
+      displayOrder: row.displayOrder ? Number.parseInt(row.displayOrder, 10) : index + 1,
+    })),
+  };
+}
+
+function hasExplicitTime(value?: string): boolean {
+  return Boolean(value && /\b\d{1,2}:\d{2}\b|\b\d{1,2}\s*(?:a\.?m\.?|p\.?m\.?)\b/i.test(value));
+}
+
+export function resolveBookingDate(raw: Pick<ReviewedRecord, "intakeDate" | "bookingDateTimeText" | "bookingTimeKnown">) {
+  const originalText = normalizeText(raw.bookingDateTimeText) ?? normalizeText(raw.intakeDate);
+  const parsed = raw.intakeDate ? new Date(raw.intakeDate) : originalText ? new Date(originalText) : undefined;
+  const recordDate = parsed && !Number.isNaN(parsed.getTime()) ? parsed : new Date();
+  const bookingDate = new Date(recordDate);
+  bookingDate.setHours(0, 0, 0, 0);
+
+  return {
+    bookingDateTimeText: originalText,
+    bookingTimeKnown: raw.bookingTimeKnown ?? hasExplicitTime(originalText),
+    bookingDate,
+    recordDate,
+  };
+}
+
+export function normalizeRecord(raw: ReviewedRecord): ReviewedRecord {
   const fullName = normalizeText(raw.fullName);
   if (!fullName) {
     throw new Error("record.json is missing fullName.");
@@ -102,7 +199,11 @@ function normalizeRecord(raw: ReviewedRecord): ReviewedRecord {
     sourceUrl,
     sourceTimestamp: raw.sourceTimestamp || new Date().toISOString(),
     status: normalizeText(raw.status) ?? "Listed",
+    city: normalizeText(raw.city),
     countyArrested: normalizeText(raw.countyArrested),
+    state: normalizeText(raw.state),
+    sourceRecordId: normalizeText(raw.sourceRecordId) ?? normalizeText(raw.permanentId) ?? normalizeText(raw.offenderId),
+    bookingDateTimeText: normalizeText(raw.bookingDateTimeText) ?? normalizeText(raw.intakeDate),
     arrestingAgency: normalizeText(raw.arrestingAgency),
     arrestingOfficer: normalizeText(raw.arrestingOfficer),
     complianceNotes: normalizeText(raw.complianceNotes),
@@ -170,6 +271,16 @@ async function readJson<T>(filePath: string): Promise<T> {
   return JSON.parse(raw) as T;
 }
 
+async function readReviewedRecord(folder: string): Promise<ReviewedRecord | undefined> {
+  const jsonPath = path.join(folder, "record.json");
+  if (await exists(jsonPath)) return readJson<ReviewedRecord>(jsonPath);
+
+  const csvPath = path.join(folder, "record.csv");
+  if (await exists(csvPath)) return parseReviewedCsv(await fs.readFile(csvPath, "utf8"));
+
+  return undefined;
+}
+
 async function exists(filePath: string): Promise<boolean> {
   try {
     await fs.access(filePath);
@@ -230,13 +341,18 @@ async function ensureRecordTemplate(folder: string): Promise<string> {
     fullName: "First Middle Last",
     age: 0,
     gender: "M",
+    city: "City listed by source",
     race: "Unknown",
     status: "Listed",
     intakeDate: new Date().toISOString(),
+    bookingDateTimeText: "May 31, 2026 10:30 AM",
+    bookingTimeKnown: true,
     releaseDate: undefined,
+    sourceRecordId: "SOURCE-RECORD-ID-HERE",
     offenderId: "OFFENDER-ID-HERE",
     permanentId: "PERMANENT-ID-HERE",
     countyArrested: "Johnson",
+    state: "KY",
     arrestingAgency: "Agency listed by source",
     arrestingOfficer: "Officer listed by source",
     sourceName: "Big Sandy Regional Detention Center Public Roster",
@@ -278,7 +394,7 @@ function makeFacebookPostText(record: ReviewedRecord, publicUrl: string): string
     {
       displayName: record.fullName,
       age: record.age,
-      recordDate: record.intakeDate,
+      recordDate: record.bookingDateTimeText ?? record.intakeDate,
       arrestingAgency: record.arrestingAgency,
       arrestingOfficer: record.arrestingOfficer,
       charges: record.charges,
@@ -314,23 +430,23 @@ async function createFacebookDraft(recordId: string, recordSlug: string, record:
 
 export async function importApprovedFolder(options: ImportOptions) {
   const folder = path.resolve(options.folder);
-  const recordPath = path.join(folder, "record.json");
 
   if (!(await exists(folder))) {
     throw new Error(`Folder not found: ${folder}`);
   }
 
-  if (!(await exists(recordPath))) {
+  const reviewedFile = await readReviewedRecord(folder);
+  if (!reviewedFile) {
     const templatePath = await ensureRecordTemplate(folder);
     return {
       status: "missing_record_json" as const,
-      message: `record.json was missing. Created template: ${templatePath}`,
+      message: `record.json or record.csv was missing. Created template: ${templatePath}`,
       templatePath,
     };
   }
 
-  const raw = await readJson<ReviewedRecord>(recordPath);
-  const record = normalizeRecord(raw);
+  const record = normalizeRecord(reviewedFile);
+  const booking = resolveBookingDate(record);
 
   const combined = JSON.stringify(record);
   if (hasAddressLikeText(combined)) {
@@ -352,6 +468,7 @@ export async function importApprovedFolder(options: ImportOptions) {
   const existing = await prisma.publicRecordDemo.findFirst({
     where: {
       OR: [
+        ...(record.sourceRecordId ? [{ sourceRecordId: record.sourceRecordId }] : []),
         { slug: recordSlug },
         { sourceUrl: record.sourceUrl },
       ],
@@ -378,10 +495,16 @@ export async function importApprovedFolder(options: ImportOptions) {
       displayName: record.fullName,
       age: record.age,
       gender: record.gender,
+      city: record.city,
       arrestingAgency: record.arrestingAgency,
       arrestingOfficer: record.arrestingOfficer,
       county: record.countyArrested,
-      recordDate: record.intakeDate ? new Date(record.intakeDate) : new Date(),
+      state: record.state,
+      sourceRecordId: record.sourceRecordId,
+      bookingDateTimeText: booking.bookingDateTimeText,
+      bookingDate: booking.bookingDate,
+      bookingTimeKnown: booking.bookingTimeKnown,
+      recordDate: booking.recordDate,
       status: record.status,
       sourceName: record.sourceName,
       sourceUrl: record.sourceUrl,

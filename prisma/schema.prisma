@@ -70,9 +70,15 @@ model PublicRecordDemo {
   displayName String
   age Int?
   gender String?
+  city String?
   arrestingAgency String?
   arrestingOfficer String?
   county String?
+  state String?
+  sourceRecordId String? @unique
+  bookingDateTimeText String?
+  bookingDate DateTime
+  bookingTimeKnown Boolean @default(true)
   recordDate DateTime
   status String?
   sourceName String

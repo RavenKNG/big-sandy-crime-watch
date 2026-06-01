@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { AdSlot } from "@/components/AdSlot";
-import { formatDate, getPublishedRecords, getRecord, innocenceNotice } from "@/lib/content";
+import { Mugshot } from "@/components/Mugshot";
+import { getRecord, innocenceNotice } from "@/lib/content";
 import { getDb } from "@/lib/db";
+import { bookingDisplayText, publishedRecordOrder } from "@/lib/record-display";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +19,7 @@ export async function generateMetadata({
     where: { slug },
     select: { displayName: true, county: true, publishStatus: true },
   });
-  const fixture = getRecord(slug);
+  const fixture = process.env.NODE_ENV === "production" ? undefined : getRecord(slug);
   const name = stored?.publishStatus === "PUBLISHED" ? stored.displayName : fixture?.displayName;
   if (!name) return {};
 
@@ -36,7 +38,7 @@ export default async function RecordPage({ params }: { params: Promise<{ slug: s
     where: { slug },
     include: { charges: { orderBy: { displayOrder: "asc" } } },
   });
-  const fixture = getRecord(slug);
+  const fixture = process.env.NODE_ENV === "production" ? undefined : getRecord(slug);
   const record =
     stored?.publishStatus === "PUBLISHED"
       ? {
@@ -44,36 +46,43 @@ export default async function RecordPage({ params }: { params: Promise<{ slug: s
           recordDate: stored.recordDate.toISOString(),
           sourceTimestamp: stored.sourceTimestamp.toISOString(),
           county: stored.county ?? "",
+          city: stored.city ?? undefined,
+          state: stored.state ?? undefined,
           status: stored.status ?? "",
           arrestingAgency: stored.arrestingAgency ?? undefined,
           arrestingOfficer: stored.arrestingOfficer ?? undefined,
+          bookingDateTimeText: stored.bookingDateTimeText ?? undefined,
+          bookingTimeKnown: stored.bookingTimeKnown,
           charges: stored.charges,
         }
       : fixture;
 
   if (!record || ("publishStatus" in record && record.publishStatus !== "PUBLISHED")) notFound();
 
-  const latest = getPublishedRecords().filter((item) => item.slug !== slug).slice(0, 3);
-  const imageReference = "imageUrl" in record && record.imageUrl;
+  const latest = await getDb().publicRecordDemo.findMany({
+    where: { publishStatus: "PUBLISHED", slug: { not: slug } },
+    select: { slug: true, displayName: true },
+    orderBy: publishedRecordOrder,
+    take: 3,
+  });
+  const imageReference = record.imageUrl ?? ("imageLocalPath" in record ? record.imageLocalPath ?? undefined : undefined);
 
   return (
     <main>
       <article className="content-card">
         <p className="eyebrow">PUBLIC BOOKING RECORD</p>
         <h1>{record.displayName}</h1>
-        <div className="image-placeholder">
-          {imageReference ? "BOOKING IMAGE SAVED" : "PUBLIC RECORD"}
-          <br />
-          BOOKING DETAILS
-        </div>
+        <Mugshot src={imageReference} alt={`${record.displayName} booking image`} />
 
         <section className="booking-summary">
           <h2>Booking summary</h2>
           <p>
-            <strong>Booking date:</strong> {formatDate(record.recordDate)}
+            <strong>Booking date:</strong> {bookingDisplayText(record)}
           </p>
           {record.age && <p><strong>Age:</strong> {record.age}</p>}
           {record.county && <p><strong>County:</strong> {record.county}</p>}
+          {"city" in record && record.city && <p><strong>City:</strong> {record.city}</p>}
+          {"state" in record && record.state && <p><strong>State:</strong> {record.state}</p>}
           {"arrestingAgency" in record && record.arrestingAgency && (
             <p><strong>Arresting agency:</strong> {record.arrestingAgency}</p>
           )}
