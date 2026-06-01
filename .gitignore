@@ -20,6 +20,7 @@
 # production
 /build
 /work/
+/public/booking-images/
 
 # misc
 .DS_Store
