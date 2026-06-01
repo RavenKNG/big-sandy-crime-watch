@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { createFacebookRecordCaption } from "./facebook-record-caption";
+import { todayBounds } from "./record-display";
 export type ReviewedCharge = {
   offense?: string;
   arrestCode?: string;
@@ -147,8 +148,8 @@ export function resolveBookingDate(raw: Pick<ReviewedRecord, "intakeDate" | "boo
   const originalText = normalizeText(raw.bookingDateTimeText) ?? normalizeText(raw.intakeDate);
   const parsed = raw.intakeDate ? new Date(raw.intakeDate) : originalText ? new Date(originalText) : undefined;
   const recordDate = parsed && !Number.isNaN(parsed.getTime()) ? parsed : new Date();
-  const bookingDate = new Date(recordDate);
-  bookingDate.setHours(0, 0, 0, 0);
+  const dateText = raw.intakeDate?.match(/^\d{4}-\d{2}-\d{2}/)?.[0];
+  const bookingDate = dateText ? new Date(`${dateText}T00:00:00.000Z`) : todayBounds(recordDate).start;
 
   return {
     bookingDateTimeText: originalText,

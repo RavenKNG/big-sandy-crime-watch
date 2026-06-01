@@ -28,7 +28,14 @@ describe("reviewed official-source ingestion", () => {
 
     expect(booking.bookingDateTimeText).toBe("June 1, 2026");
     expect(booking.bookingTimeKnown).toBe(false);
-    expect(booking.bookingDate.getHours()).toBe(0);
+    expect(booking.bookingDate.getUTCHours()).toBe(0);
+  });
+
+  it("uses the Eastern calendar day for the public today page", async () => {
+    const { todayBounds } = await import("../src/lib/record-display");
+    expect(todayBounds(new Date("2026-06-01T02:00:00.000Z")).start.toISOString()).toBe(
+      "2026-05-31T00:00:00.000Z",
+    );
   });
 
   it("orders booking day, known time, timestamp, then name", async () => {

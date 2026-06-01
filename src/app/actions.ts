@@ -11,7 +11,7 @@ export async function createDemoRecord(formData: FormData) {
   const slug = `${slugify(values.displayName)}-${Date.now()}`;
   const record = await getDb().publicRecordDemo.create({ data: {
     slug, displayName: values.displayName, county: values.county,
-    recordDate: new Date(values.recordDate), bookingDate: new Date(`${values.recordDate.slice(0,10)}T00:00:00`), bookingDateTimeText: values.recordDate, bookingTimeKnown: values.recordDate.includes("T"), status: "Synthetic demo draft pending editorial review",
+    recordDate: new Date(values.recordDate), bookingDate: new Date(`${values.recordDate.slice(0,10)}T00:00:00.000Z`), bookingDateTimeText: values.recordDate, bookingTimeKnown: values.recordDate.includes("T"), status: "Synthetic demo draft pending editorial review",
     sourceName: values.sourceName, sourceUrl: values.sourceUrl || null,
     sourceTimestamp: new Date(values.sourceTimestamp), imageUrl: values.imageUrl || null,
     complianceNotes: values.complianceNotes, publishStatus: "DRAFT",

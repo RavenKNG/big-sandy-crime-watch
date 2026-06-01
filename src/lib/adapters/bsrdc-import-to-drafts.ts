@@ -13,8 +13,7 @@ export async function importNormalizedRecordAsDraft(record: NormalizedPublicReco
   const existing = await db.publicRecordDemo.findFirst({ where: { OR: [{ slug }, { sourceUrl: record.sourceUrl }] } });
   if (existing) return { status: "skipped_duplicate" as const, id: existing.id, slug: existing.slug, warnings };
   const recordDate = record.intakeDate ? new Date(record.intakeDate) : new Date();
-  const bookingDate = new Date(recordDate);
-  bookingDate.setHours(0, 0, 0, 0);
+  const bookingDate = new Date(`${recordDate.toISOString().slice(0, 10)}T00:00:00.000Z`);
   const created = await db.publicRecordDemo.create({ data: {
     slug, displayName: record.fullName, age: record.age, gender: record.gender, county: record.countyArrested,
     recordDate, bookingDate, bookingDateTimeText: record.intakeDate, bookingTimeKnown: Boolean(record.intakeDate && /T\d{2}:\d{2}/.test(record.intakeDate)), status: record.status, arrestingAgency: record.arrestingAgency, arrestingOfficer: record.arrestingOfficer,
