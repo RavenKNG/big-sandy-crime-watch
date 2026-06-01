@@ -254,17 +254,28 @@ async function postNextFacebookDraft() {
   const json = await response.json();
 
   if (!response.ok) {
+    const graphError = json as { error?: { code?: number } };
+    const retryableCredentialError = graphError.error?.code === 190;
     await prisma.facebookDraft.update({
       where: {
         id: draft.id,
       },
       data: {
-        status: "FAILED",
+        status: retryableCredentialError ? "DRAFTED" : "FAILED",
+        scheduledFor: retryableCredentialError
+          ? new Date(Date.now() + envNum("POST_INTERVAL_HOURS", 3) * 60 * 60 * 1000)
+          : draft.scheduledFor,
         errorMessage: JSON.stringify(json),
       },
     });
 
-    return { posted: false, failed: true, error: JSON.stringify(json), draftId: draft.id };
+    return {
+      posted: false,
+      failed: true,
+      retryable: retryableCredentialError,
+      error: JSON.stringify(json),
+      draftId: draft.id,
+    };
   }
 
   await prisma.facebookDraft.update({

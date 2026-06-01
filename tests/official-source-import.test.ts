@@ -92,4 +92,11 @@ describe("official BSRDC public roster parser", () => {
     expect(runner).toContain('${imageUrl ? "photos" : "feed"}');
     expect(runner).toContain("{ message: draft.postText, url: imageUrl, access_token: pageToken }");
   });
+
+  it("keeps expired-token Facebook drafts retryable for the next interval", async () => {
+    const runner = await readFile("scripts/automation-runner.ts", "utf8");
+    expect(runner).toContain("graphError.error?.code === 190");
+    expect(runner).toContain('status: retryableCredentialError ? "DRAFTED" : "FAILED"');
+    expect(runner).toContain('envNum("POST_INTERVAL_HOURS", 3) * 60 * 60 * 1000');
+  });
 });
