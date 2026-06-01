@@ -76,6 +76,7 @@ model PublicRecordDemo {
   county String?
   state String?
   sourceRecordId String? @unique
+  sourceFingerprint String? @unique
   bookingDateTimeText String?
   bookingDate DateTime
   bookingTimeKnown Boolean @default(true)

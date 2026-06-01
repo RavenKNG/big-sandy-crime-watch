@@ -1,0 +1,27 @@
+[
+  {
+    "id": 101,
+    "agencyOffenderId": 202,
+    "agencyOffenderPermanentId": "SYNTH-OFFICIAL-001",
+    "firstName": "Reviewed",
+    "middleName": "Q",
+    "lastName": "Fixture",
+    "gender": "F",
+    "supervisionStatus": "Active",
+    "bookDate": "05/31/2026 08:45:00",
+    "updatedDateTime": "2026-05-31T09:00:00.000",
+    "hasImage": true,
+    "detailsJson": "[{\"filename\":\"CriminalOffenses\",\"type\":\"table\",\"data\":[{\"Offense\":\"Fixture offense\",\"Statute\":\"TEST-1\",\"Charge Description\":\"Synthetic listed charge\",\"Case Number\":\"CASE-1\"}]},{\"filename\":\"AdditionalInfo\",\"type\":\"nvp\",\"data\":[{\"Name\":\"Age\",\"Value\":\"31\"},{\"Name\":\"Arresting Agency\",\"Value\":\"Fixture Agency\"},{\"Name\":\"Arresting Officer\",\"Value\":\"Officer Fixture\"},{\"Name\":\"County Arrested\",\"Value\":\"Johnson\"}]}]"
+  },
+  {
+    "id": 102,
+    "agencyOffenderPermanentId": "SYNTH-OFFICIAL-002",
+    "firstName": "Missing",
+    "lastName": "Time",
+    "supervisionStatus": "Active",
+    "bookDate": "05/31/2026 00:00:00",
+    "updatedDateTime": "2026-05-31T09:00:00.000",
+    "hasImage": false,
+    "detailsJson": "[]"
+  }
+]

@@ -4,6 +4,7 @@ import path from "node:path";
 import { importApprovedFolder } from "../src/lib/approved-imports";
 import { createFacebookRecordCaption } from "../src/lib/facebook-record-caption";
 import { publishedRecordOrder } from "../src/lib/record-display";
+import { runOfficialSourceImport } from "../src/lib/official-source-import";
 
 const ROOT = process.cwd();
 
@@ -288,6 +289,7 @@ async function postNextFacebookDraft() {
 }
 
 async function runOnce() {
+  const officialSourceResult = await runOfficialSourceImport();
   const importResults = await scanApprovedImports();
   const draftResults = await createFacebookDraftsForPublishedRecords();
   const facebookPostResult = await postNextFacebookDraft();
@@ -297,6 +299,7 @@ async function runOnce() {
       {
         ok: true,
         ranAt: new Date().toISOString(),
+        officialSourceResult,
         importResults,
         draftResults,
         facebookPostResult,

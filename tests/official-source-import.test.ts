@@ -1,0 +1,83 @@
+import { readFile } from "node:fs/promises";
+import { afterEach, describe, expect, it } from "vitest";
+import fixture from "../fixtures/official-source-roster-sanitized.json";
+import {
+  lastThreeEasternDays,
+  parseOfficialRosterRows,
+  runOfficialSourceImport,
+  type VendorRosterRow,
+} from "../src/lib/official-source-import";
+
+describe("official BSRDC public roster parser", () => {
+  afterEach(() => {
+    delete process.env.OFFICIAL_SOURCE_FETCH_ENABLED;
+    delete process.env.AUTO_IMPORT_OFFICIAL_RECORDS;
+    delete process.env.AUTO_PUBLISH_VALID_IMPORTED_RECORDS;
+  });
+
+  it("maps allowlisted roster fields and a mugshot reference", () => {
+    const [record] = parseOfficialRosterRows(fixture as VendorRosterRow[]);
+    expect(record.sourceRecordId).toBe("SYNTH-OFFICIAL-001");
+    expect(record.displayName).toBe("Reviewed Q Fixture");
+    expect(record.age).toBe(31);
+    expect(record.arrestingAgency).toBe("Fixture Agency");
+    expect(record.arrestingOfficer).toBe("Officer Fixture");
+    expect(record.county).toBe("Johnson");
+    expect(record.imageId).toBe("101");
+    expect(record.charges[0].chargeDescription).toBe("Synthetic listed charge");
+  });
+
+  it("preserves original booking text and missing-time state", () => {
+    const records = parseOfficialRosterRows(fixture as VendorRosterRow[]);
+    expect(records[0].bookingDateTimeText).toBe("05/31/2026 08:45:00");
+    expect(records[0].bookingTimeKnown).toBe(true);
+    expect(records[1].bookingTimeKnown).toBe(false);
+  });
+
+  it("uses a transparent unavailable-charges placeholder", () => {
+    const records = parseOfficialRosterRows(fixture as VendorRosterRow[]);
+    expect(records[1].charges[0].chargeDescription).toBe(
+      "Charges unavailable from source at time of import.",
+    );
+  });
+
+  it("creates stable fingerprints and source slugs", () => {
+    const first = parseOfficialRosterRows(fixture as VendorRosterRow[]);
+    const second = parseOfficialRosterRows(fixture as VendorRosterRow[]);
+    expect(first[0].sourceFingerprint).toBe(second[0].sourceFingerprint);
+    expect(first[0].slug).toContain("synth-official-001");
+  });
+
+  it("calculates an inclusive three-Eastern-calendar-day range", () => {
+    const range = lastThreeEasternDays();
+    expect(Date.parse(range.toDate)).toBeGreaterThanOrEqual(Date.parse(range.fromDate));
+    expect((Date.parse(range.toDate) - Date.parse(range.fromDate)) / 86_400_000).toBe(2);
+  });
+
+  it("does not expose non-allowlisted vendor fields", () => {
+    const [record] = parseOfficialRosterRows([
+      {
+        ...(fixture[0] as VendorRosterRow),
+        ssn: "000-00-0000",
+        driversLicenseNumber: "SYNTHETIC-LICENSE",
+      } as VendorRosterRow,
+    ]);
+    expect(record).not.toHaveProperty("ssn");
+    expect(record).not.toHaveProperty("driversLicenseNumber");
+  });
+
+  it("stays disabled unless every automatic-import flag is explicitly enabled", async () => {
+    expect(await runOfficialSourceImport()).toEqual({
+      skipped: true,
+      reason: "OFFICIAL_SOURCE_FETCH_ENABLED is not true.",
+    });
+  });
+
+  it("runs official import before Facebook posting in the worker cycle", async () => {
+    const runner = await readFile("scripts/automation-runner.ts", "utf8");
+    const runOnce = runner.slice(runner.indexOf("async function runOnce()"));
+    expect(runOnce.indexOf("runOfficialSourceImport()")).toBeLessThan(
+      runOnce.indexOf("postNextFacebookDraft()"),
+    );
+  });
+});

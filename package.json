@@ -25,7 +25,8 @@
     "fb:post-next": "tsx scripts/facebook-dry-run.ts --post-next",
     "scheduler:start": "tsx scripts/scheduler.ts",
     "automation:once": "tsx scripts/automation-runner.ts --once",
-    "automation:start": "tsx scripts/automation-runner.ts"
+    "automation:start": "tsx scripts/automation-runner.ts",
+    "official-source:backfill": "tsx scripts/official-source-backfill.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",
