@@ -99,4 +99,10 @@ describe("official BSRDC public roster parser", () => {
     expect(runner).toContain('status: retryableCredentialError ? "DRAFTED" : "FAILED"');
     expect(runner).toContain('envNum("POST_INTERVAL_HOURS", 3) * 60 * 60 * 1000');
   });
+
+  it("checks Facebook Page-token health before posting each worker cycle", async () => {
+    const runner = await readFile("scripts/automation-runner.ts", "utf8");
+    expect(runner).toContain("verifyFacebookPageToken()");
+    expect(runner).toContain("Facebook Page token health check failed; queue preserved.");
+  });
 });

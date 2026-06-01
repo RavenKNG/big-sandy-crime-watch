@@ -5,6 +5,7 @@ import { importApprovedFolder } from "../src/lib/approved-imports";
 import { createFacebookRecordCaption } from "../src/lib/facebook-record-caption";
 import { publishedRecordOrder } from "../src/lib/record-display";
 import { runOfficialSourceImport } from "../src/lib/official-source-import";
+import { verifyFacebookPageToken } from "../src/lib/facebook-token-health";
 
 const ROOT = process.cwd();
 
@@ -310,8 +311,15 @@ async function runOnce(options: { skipFacebookPost?: boolean } = {}) {
   const officialSourceResult = await runOfficialSourceImport();
   const importResults = await scanApprovedImports();
   const draftResults = await createFacebookDraftsForPublishedRecords();
+  const facebookTokenHealth = await verifyFacebookPageToken();
   const facebookPostResult = options.skipFacebookPost
     ? { skipped: true, reason: "Startup post skipped; waiting for the configured interval." }
+    : !facebookTokenHealth.healthy
+      ? {
+          skipped: true,
+          reason: "Facebook Page token health check failed; queue preserved.",
+          actionRequired: facebookTokenHealth.actionRequired,
+        }
     : await postNextFacebookDraft();
 
   console.log(
@@ -322,6 +330,7 @@ async function runOnce(options: { skipFacebookPost?: boolean } = {}) {
         officialSourceResult,
         importResults,
         draftResults,
+        facebookTokenHealth,
         facebookPostResult,
       },
       null,
