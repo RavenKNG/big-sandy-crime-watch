@@ -7,7 +7,8 @@ type OAuthToken = { access_token?: string; error?: { message?: string } };
 type AccountList = { data?: Array<{ id?: string; name?: string; tasks?: string[]; access_token?: string }>; error?: { message?: string } };
 
 function connectUrl(request: Request, params: Record<string, string>) {
-  const url = new URL("/admin/facebook/connect", request.url);
+  const baseUrl = process.env.SITE_URL || request.url;
+  const url = new URL("/admin/facebook/connect", baseUrl);
   for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value);
   return url;
 }

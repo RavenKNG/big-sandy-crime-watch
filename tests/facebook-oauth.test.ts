@@ -35,6 +35,7 @@ describe("admin Facebook reconnect workflow", () => {
   it("validates OAuth state before exchanging a callback code", async () => {
     const callback = await readFile("src/app/admin/facebook/callback/route.ts", "utf8");
     expect(callback).toContain('state !== expectedState');
+    expect(callback).toContain('process.env.SITE_URL || request.url');
     expect(callback).toContain("/me/accounts?fields=id,name,tasks,access_token");
     expect(callback).toContain("saveFacebookConnection");
   });
