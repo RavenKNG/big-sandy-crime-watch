@@ -118,5 +118,6 @@ describe("official BSRDC public roster parser", () => {
     const source = await readFile("src/lib/official-source-import.ts", "utf8");
     expect(runner).toContain("facebookRecordUrl(record.slug, siteUrl)");
     expect(source).toContain("facebookRecordUrl(record.slug, process.env.SITE_URL)");
+    expect(source).toContain('data: { facebookPostStatus: "DRAFTED" }');
   });
 });

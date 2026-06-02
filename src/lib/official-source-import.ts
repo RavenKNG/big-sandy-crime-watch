@@ -335,7 +335,13 @@ async function createFacebookDraft(record: {
 }) {
   const db = getDb();
   const existing = await db.facebookDraft.findFirst({ where: { recordId: record.id } });
-  if (existing) return { created: false, id: existing.id };
+  if (existing) {
+    await db.publicRecordDemo.update({
+      where: { id: record.id },
+      data: { facebookPostStatus: existing.status === "POSTED" ? "POSTED" : "DRAFTED" },
+    });
+    return { created: false, id: existing.id };
+  }
   const postUrl = facebookRecordUrl(record.slug, process.env.SITE_URL);
   const draft = await db.facebookDraft.create({
     data: {
@@ -346,6 +352,10 @@ async function createFacebookDraft(record: {
       postUrl,
       imageUrl: record.imageUrl || record.imageLocalPath,
     },
+  });
+  await db.publicRecordDemo.update({
+    where: { id: record.id },
+    data: { facebookPostStatus: "DRAFTED" },
   });
   return { created: true, id: draft.id };
 }
