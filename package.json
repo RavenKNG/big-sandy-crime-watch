@@ -26,6 +26,7 @@
     "fb:verify-token": "tsx scripts/verify-facebook-token.ts",
     "facebook:token-health": "tsx scripts/verify-facebook-token.ts",
     "facebook:diagnose": "tsx scripts/facebook-diagnose.ts",
+    "status:automation": "tsx scripts/status-automation.ts",
     "facebook:test-post": "tsx scripts/facebook-test-post.ts",
     "fb:refresh-captions": "tsx scripts/refresh-facebook-captions.ts",
     "fb:roundup:dry-run": "tsx scripts/facebook-roundup-dry-run.ts",
