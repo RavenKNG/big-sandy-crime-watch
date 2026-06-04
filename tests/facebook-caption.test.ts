@@ -10,9 +10,11 @@ describe("Facebook record captions", () => {
       {
         displayName: "Example Person",
         age: 33,
+        county: "Johnson",
         recordDate: "2026-06-01T12:30:00.000Z",
         arrestingAgency: "Example Agency",
         arrestingOfficer: "Officer Example",
+        sourceName: "Big Sandy Regional Detention Center Public Roster",
         charges: [
           { offense: "First category", chargeDescription: "First full charge description" },
           { offense: "Second category", chargeDescription: "Second full charge description" },
@@ -21,8 +23,10 @@ describe("Facebook record captions", () => {
       publicUrl,
     );
 
-    expect(caption).toContain("BIG SANDY REGIONAL BOOKING UPDATE");
-    expect(caption).not.toContain("BIG SANDY AREA");
+    expect(caption).toContain("PUBLIC RECORD UPDATE");
+    expect(caption).toContain(
+      "New public record added for Johnson County from Big Sandy Regional Detention Center Public Roster.",
+    );
     expect(caption).toContain("Example Person");
     expect(caption).toContain("Age: 33");
     expect(caption).toContain("Arresting agency: Example Agency");
@@ -36,11 +40,15 @@ describe("Facebook record captions", () => {
     const caption = createFacebookRecordCaption(
       {
         displayName: "Example Person",
+        sourceName: "Big Sandy Regional Detention Center Public Roster",
         charges: [{ offense: "Example category", chargeDescription: "Full single charge text" }],
       },
       publicUrl,
     );
 
+    expect(caption).toContain(
+      "New public record added from Big Sandy Regional Detention Center Public Roster.",
+    );
     expect(caption).toContain(`Full booking details and charges available on the website: ${publicUrl}`);
     expect(caption).not.toContain("Full single charge text");
     expect(caption).toContain(

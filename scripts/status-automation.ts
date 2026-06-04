@@ -1,10 +1,12 @@
 import { getAutomationStatusSnapshot } from "../src/lib/automation-status";
 import { verifyFacebookPageToken } from "../src/lib/facebook-token-health";
+import { getOfficialSourceStatuses } from "../src/lib/official-source-status";
 
 async function main() {
-  const [snapshot, facebookHealth] = await Promise.all([
+  const [snapshot, facebookHealth, officialSources] = await Promise.all([
     getAutomationStatusSnapshot(),
     verifyFacebookPageToken(),
+    getOfficialSourceStatuses(),
   ]);
 
   console.log(
@@ -13,6 +15,7 @@ async function main() {
         checkedAt: new Date().toISOString(),
         snapshot,
         facebookHealth,
+        officialSources,
       },
       null,
       2,

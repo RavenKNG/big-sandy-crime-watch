@@ -1,7 +1,10 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { officialSourceAdapterStatus } from "@/lib/importers";
+import { getOfficialSourceStatuses } from "@/lib/official-source-status";
 import type { MappingReport } from "@/lib/adapters/bsrdc-mapping-report";
+
+export const dynamic = "force-dynamic";
 
 async function getReport(name: string) {
   try {
@@ -12,9 +15,10 @@ async function getReport(name: string) {
 }
 
 export default async function ImportPage() {
-  const [fileReport, fixtureReport] = await Promise.all([
+  const [fileReport, fixtureReport, sourceStatuses] = await Promise.all([
     getReport("bsrdc-file-mapping-report.json"),
     getReport("bsrdc-mapping-report.json"),
+    getOfficialSourceStatuses(),
   ]);
   const report = fileReport ?? fixtureReport;
   const automaticOfficialSourceEnabled =
@@ -41,6 +45,25 @@ export default async function ImportPage() {
         <h2>Reviewed CSV columns</h2>
         <p>fullName, age, gender, city, countyArrested, state, intakeDate, bookingDateTimeText, bookingTimeKnown, arrestingAgency, arrestingOfficer, sourceName, sourceUrl, sourceTimestamp, sourceRecordId, imageUrl, offense, statute, chargeDescription, caseNumber</p>
         <p className="notice">Reviewed files remain available as a fallback ingestion boundary. Official-source automation is controlled by server environment flags.</p>
+
+        <h2>Official source status</h2>
+        {sourceStatuses.map((source: (typeof sourceStatuses)[number]) => (
+          <div className="admin-card" key={source.slug}>
+            <h3>{source.sourceName}</h3>
+            <p>Automation enabled: <span className="pill">{source.automationEnabled ? "yes" : "no"}</span></p>
+            <p>Type: {source.sourceType}</p>
+            <p>Facility county: {source.facilityCounty}{source.facilityCity ? ` (${source.facilityCity})` : ""}</p>
+            <p>Last import attempt: {source.lastAttemptAt?.toISOString() ?? "never"}</p>
+            <p>Last successful import: {source.lastSuccessAt?.toISOString() ?? "never"}</p>
+            <p>Records found: {source.recordsFound}</p>
+            <p>Records created: {source.recordsCreated}</p>
+            <p>Duplicates skipped: {source.recordsSkipped}</p>
+            <p>Queued for Facebook: {source.recordsQueuedForFacebook}</p>
+            <p>Detected counties: {source.detectedCounties.join(", ") || "none yet"}</p>
+            <p>Detected agencies: {source.detectedAgencies.join(", ") || "none yet"}</p>
+            <p>{source.message ?? "No current source warning."}</p>
+          </div>
+        ))}
       </section>
     </main>
   );

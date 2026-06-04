@@ -24,7 +24,9 @@ export default async function AdminPage() {
       db.facebookDraft.findMany({ where: { status: "POSTED" }, orderBy: { updatedAt: "desc" }, take: 3, select: { facebookPostId: true } }),
       getAutomationStatusSnapshot(),
     ]);
-  const drafts = records.filter((record) => record.publishStatus === "DRAFT").length;
+  const drafts = records.filter(
+    (record: (typeof records)[number]) => record.publishStatus === "DRAFT",
+  ).length;
 
   return (
     <main>
@@ -34,7 +36,7 @@ export default async function AdminPage() {
       {automation.warnings.length > 0 ? (
         <section className="admin-card">
           <h2>Automation warnings</h2>
-          {automation.warnings.map((warning) => (
+          {automation.warnings.map((warning: (typeof automation.warnings)[number]) => (
             <p className="notice" key={warning}>{warning}</p>
           ))}
           <p>Last Facebook health check: {automation.connection?.lastHealthCheckAt?.toISOString() ?? "not checked"}</p>
@@ -65,18 +67,23 @@ export default async function AdminPage() {
       <section className="admin-card">
         <h2>Automation snapshot</h2>
         <p>Next queued post: {nextPost?.scheduledFor?.toISOString() ?? "none"}</p>
-        <p>Recent Facebook post IDs: {recentPosts.map((post) => post.facebookPostId).filter(Boolean).join(", ") || "none"}</p>
+        <p>
+          Recent Facebook post IDs: {recentPosts
+            .map((post: (typeof recentPosts)[number]) => post.facebookPostId)
+            .filter(Boolean)
+            .join(", ") || "none"}
+        </p>
         <p>Latest published record: {automation.latestPublishedRecord?.slug ?? "none"}</p>
         <p>Latest Facebook draft: {automation.latestDraft?.createdAt?.toISOString() ?? "none"}</p>
         <Link className="button" href="/admin/facebook-export">Open export queue</Link>
       </section>
 
       <h2>Saved records</h2>
-      {records.map((record) => <p key={record.id}><Link href={`/admin/records/${record.slug}`}>{record.displayName}</Link> - {record.publishStatus}</p>)}
+      {records.map((record: (typeof records)[number]) => <p key={record.id}><Link href={`/admin/records/${record.slug}`}>{record.displayName}</Link> - {record.publishStatus}</p>)}
 
       <h2>Correction requests</h2>
       <p className="notice">Correction-request email notifications are disabled. Review this queue manually.</p>
-      {corrections.length === 0 ? <p>No requests submitted.</p> : corrections.map((request) => <section className="admin-card" key={request.id}><strong>{request.requestType} - {request.status}</strong><p>{request.name} - {request.email}</p><p>Submitted: {request.createdAt.toISOString()}</p>{request.relatedUrl && <p><a href={request.relatedUrl}>Open related record</a></p>}<p>{request.message}</p><form action={updateCorrectionStatus}><input type="hidden" name="id" value={request.id}/><label>Review status<select name="status" defaultValue={request.status}><option>NEW</option><option>REVIEWING</option><option>RESOLVED</option><option>DENIED</option></select></label><button type="submit">Update request</button></form></section>)}
+      {corrections.length === 0 ? <p>No requests submitted.</p> : corrections.map((request: (typeof corrections)[number]) => <section className="admin-card" key={request.id}><strong>{request.requestType} - {request.status}</strong><p>{request.name} - {request.email}</p><p>Submitted: {request.createdAt.toISOString()}</p>{request.relatedUrl && <p><a href={request.relatedUrl}>Open related record</a></p>}<p>{request.message}</p><form action={updateCorrectionStatus}><input type="hidden" name="id" value={request.id}/><label>Review status<select name="status" defaultValue={request.status}><option>NEW</option><option>REVIEWING</option><option>RESOLVED</option><option>DENIED</option></select></label><button type="submit">Update request</button></form></section>)}
     </main>
   );
 }

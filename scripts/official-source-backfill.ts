@@ -1,7 +1,21 @@
 import { runOfficialSourceImport } from "../src/lib/official-source-import";
 
+function readArg(name: string) {
+  const index = process.argv.indexOf(`--${name}`);
+  return index >= 0 ? process.argv[index + 1] : undefined;
+}
+
 async function main() {
-  const result = await runOfficialSourceImport();
+  const source = readArg("source");
+  const fromDate = readArg("from");
+  const toDate = readArg("to");
+  const dryRun = process.argv.includes("--dry-run");
+  const result = await runOfficialSourceImport({
+    sourceSlugs: source ? [source] : undefined,
+    fromDate,
+    toDate,
+    dryRun,
+  });
   console.log(JSON.stringify(result, null, 2));
 }
 

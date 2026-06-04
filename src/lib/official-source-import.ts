@@ -4,21 +4,13 @@ import path from "node:path";
 import { getDb } from "./db";
 import { createFacebookRecordCaption } from "./facebook-record-caption";
 import { facebookRecordUrl } from "./facebook-links";
-
-export const OFFICIAL_SOURCE_NAME = "Big Sandy Regional Detention Center Public Roster";
-export const OFFICIAL_ROSTER_URL =
-  "http://bsrdc.com/InmateRoster/BSRDC_inmatelist.html";
-export const OFFICIAL_AGENCY_CODE = "BIGSANDYKYRDC";
-export const OFFICIAL_API_ROOT =
-  "https://omsweb.public-safety-cloud.com/publicroster-api/api";
-
-function officialRosterUrl(): string {
-  return process.env.OFFICIAL_SOURCE_URL || OFFICIAL_ROSTER_URL;
-}
-
-function officialApiRoot(): string {
-  return process.env.OFFICIAL_SOURCE_API_URL || OFFICIAL_API_ROOT;
-}
+import {
+  automaticOfficialSources,
+  findOfficialSourceBySlug,
+  officialSourceApiRoot,
+  officialSourceRosterUrl,
+  type OfficialSourceConfig,
+} from "./official-sources";
 
 type VendorDetailSection = {
   filename?: string;
@@ -55,6 +47,7 @@ export type OfficialCharge = {
 };
 
 export type ParsedOfficialRecord = {
+  sourceSlug: string;
   sourceRecordId: string;
   sourceFingerprint: string;
   slug: string;
@@ -76,6 +69,29 @@ export type ParsedOfficialRecord = {
   sourceTimestamp: Date;
   imageId?: string;
   charges: OfficialCharge[];
+};
+
+export type OfficialSourceImportSummary = {
+  sourceSlug: string;
+  sourceName: string;
+  skipped: boolean;
+  blocked?: boolean;
+  reason?: string;
+  range?: {
+    fromDate: string;
+    toDate: string;
+  };
+  found: number;
+  created: number;
+  updated: number;
+  duplicatesSkipped: number;
+  failed: number;
+  imagesSaved: number;
+  missingImages: number;
+  draftsCreated: number;
+  failures: string[];
+  detectedCounties: string[];
+  detectedAgencies: string[];
 };
 
 function text(value: unknown): string | undefined {
@@ -103,13 +119,7 @@ function easternDayKey(date: Date): string {
   return `${values.year}-${values.month}-${values.day}`;
 }
 
-function parseVendorDate(value?: string): {
-  original?: string;
-  dayKey: string;
-  bookingDate: Date;
-  recordDate: Date;
-  bookingTimeKnown: boolean;
-} {
+function parseVendorDate(value?: string) {
   const original = text(value);
   const match = original?.match(
     /^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2}):(\d{2}))?$/,
@@ -128,12 +138,17 @@ function parseVendorDate(value?: string): {
 
   const [, month, day, year, hour = "0", minute = "0", second = "0"] = match;
   const dayKey = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
-  const bookingTimeKnown = `${hour}:${minute}:${second}` !== "0:0:0" && `${hour}:${minute}:${second}` !== "00:00:00";
+  const bookingTimeKnown =
+    `${hour}:${minute}:${second}` !== "0:0:0" &&
+    `${hour}:${minute}:${second}` !== "00:00:00";
+
   return {
     original,
     dayKey,
     bookingDate: new Date(`${dayKey}T00:00:00.000Z`),
-    recordDate: new Date(`${dayKey}T${hour.padStart(2, "0")}:${minute}:${second}-04:00`),
+    recordDate: new Date(
+      `${dayKey}T${hour.padStart(2, "0")}:${minute}:${second}-04:00`,
+    ),
     bookingTimeKnown,
   };
 }
@@ -186,7 +201,24 @@ function charges(sections: VendorDetailSection[]): OfficialCharge[] {
   }));
 }
 
+function inferCountyFromAgency(value?: string): string | undefined {
+  const agency = text(value);
+  if (!agency) return undefined;
+  const match = agency.match(/([A-Za-z]+(?:\s+[A-Za-z]+)?)\s+County/i);
+  return match?.[1]?.replace(/\s+/g, " ").trim();
+}
+
+function detectAssociatedCounty(source: OfficialSourceConfig, info: Map<string, string>, row: VendorRosterRow) {
+  return (
+    text(info.get("County Arrested")) ||
+    inferCountyFromAgency(info.get("Arresting Agency")) ||
+    inferCountyFromAgency(row.multiAgencyName) ||
+    source.facilityCounty
+  );
+}
+
 function fingerprint(record: {
+  sourceSlug: string;
   displayName: string;
   bookingDateTimeText?: string;
   sourceName: string;
@@ -196,6 +228,7 @@ function fingerprint(record: {
     .createHash("sha256")
     .update(
       [
+        record.sourceSlug,
         record.displayName.toLowerCase(),
         record.bookingDateTimeText ?? "",
         record.sourceName,
@@ -207,38 +240,47 @@ function fingerprint(record: {
     .digest("hex");
 }
 
-export function parseOfficialRosterRows(rows: VendorRosterRow[]): ParsedOfficialRecord[] {
+export function parseOfficialRosterRows(
+  rows: VendorRosterRow[],
+  source: OfficialSourceConfig,
+): ParsedOfficialRecord[] {
   return rows.flatMap((row) => {
-    const sourceRecordId = text(String(row.agencyOffenderPermanentId ?? row.agencyOffenderId ?? row.id ?? ""));
+    const vendorId = text(
+      String(row.agencyOffenderPermanentId ?? row.agencyOffenderId ?? row.id ?? ""),
+    );
     const displayName = [row.firstName, row.middleName, row.lastName, row.nameSuffix]
       .map(text)
       .filter(Boolean)
       .join(" ");
-    if (!sourceRecordId || !displayName) return [];
+    if (!vendorId || !displayName) return [];
 
+    const sourceRecordId = `${source.slug}:${vendorId}`;
     const booking = parseVendorDate(row.bookDate);
     const sections = details(row);
     const info = additionalInfo(sections);
     const recordCharges = charges(sections);
-    const sourceUrl = `${officialRosterUrl()}#offender-${encodeURIComponent(sourceRecordId)}`;
+    const sourceUrl = `${officialSourceRosterUrl(source)}#offender-${encodeURIComponent(vendorId)}`;
     const sourceTimestamp = row.updatedDateTime
       ? new Date(`${row.updatedDateTime}Z`)
       : new Date();
     const parsed = {
+      sourceSlug: source.slug,
       sourceRecordId,
-      slug: slugify(`${displayName}-${sourceRecordId}`),
+      slug: slugify(`${displayName}-${source.slug}-${vendorId}`),
       displayName,
       age: Number.parseInt(info.get("Age") ?? "", 10) || undefined,
       gender: text(row.gender),
-      county: info.get("County Arrested"),
-      arrestingAgency: info.get("Arresting Agency"),
+      county: detectAssociatedCounty(source, info, row),
+      city: source.facilityCity,
+      state: "KY",
+      arrestingAgency: text(info.get("Arresting Agency")) ?? text(row.multiAgencyName),
       arrestingOfficer: info.get("Arresting Officer"),
       bookingDateTimeText: booking.original,
       bookingDate: booking.bookingDate,
       bookingTimeKnown: booking.bookingTimeKnown,
       recordDate: booking.recordDate,
       status: text(row.supervisionStatus),
-      sourceName: OFFICIAL_SOURCE_NAME,
+      sourceName: source.sourceName,
       sourceUrl,
       sourceTimestamp: Number.isNaN(sourceTimestamp.getTime()) ? new Date() : sourceTimestamp,
       imageId: row.hasImage ? text(row.imageUri) : undefined,
@@ -268,15 +310,15 @@ async function fetchWithTimeout(url: string, init?: RequestInit, timeoutMs = 20_
   }
 }
 
-export async function fetchOfficialRoster(fromDate: string, toDate: string) {
+async function fetchPublicRosterApi(source: OfficialSourceConfig, fromDate: string, toDate: string) {
   const response = await fetchWithTimeout(
-    `${officialApiRoot()}/${OFFICIAL_AGENCY_CODE}/search-offenders`,
+    `${officialSourceApiRoot()}/${source.agencyCode}/search-offenders`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         recaptchaToken: "",
-        agencyCode: OFFICIAL_AGENCY_CODE,
+        agencyCode: source.agencyCode,
         supervisionStatus: "All",
         firstName: "",
         lastName: "",
@@ -292,15 +334,86 @@ export async function fetchOfficialRoster(fromDate: string, toDate: string) {
       }),
     },
   );
-  if (!response.ok) throw new Error(`Official roster request failed with status ${response.status}.`);
+  if (!response.ok) throw new Error(`${source.sourceName} request failed with status ${response.status}.`);
   const json = (await response.json()) as { data?: VendorRosterRow[] };
-  return parseOfficialRosterRows(Array.isArray(json.data) ? json.data : []);
+  return parseOfficialRosterRows(Array.isArray(json.data) ? json.data : [], source);
 }
 
-async function persistImage(slug: string, imageId?: string) {
-  if (!imageId) return undefined;
+type JailTrackerOffenderResponse = {
+  captchaRequired?: boolean;
+  offenders?: VendorRosterRow[];
+  errorMessage?: string;
+};
+
+async function fetchJailTrackerCaptchaSource(source: OfficialSourceConfig): Promise<OfficialSourceImportSummary> {
+  const agencyResponse = await fetchWithTimeout(
+    `https://omsweb.public-safety-cloud.com/jtclientweb/Offender/${source.routeSlug}/AgencyOptions`,
+  );
+  if (!agencyResponse.ok) {
+    throw new Error(`${source.sourceName} agency options request failed with status ${agencyResponse.status}.`);
+  }
+
+  const rosterResponse = await fetchWithTimeout(
+    `https://omsweb.public-safety-cloud.com/jtclientweb/Offender/${source.routeSlug}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        captchaKey: null,
+        captchaImage: null,
+        userCode: "",
+      }),
+    },
+  );
+  if (!rosterResponse.ok) {
+    throw new Error(`${source.sourceName} roster request failed with status ${rosterResponse.status}.`);
+  }
+
+  const payload = (await rosterResponse.json()) as JailTrackerOffenderResponse;
+  if (payload.captchaRequired) {
+    return {
+      sourceSlug: source.slug,
+      sourceName: source.sourceName,
+      skipped: true,
+      blocked: true,
+      reason:
+        "Vendor JailTracker route requires an interactive captcha challenge before offender data is returned. Automated import remains disabled for this source.",
+      found: 0,
+      created: 0,
+      updated: 0,
+      duplicatesSkipped: 0,
+      failed: 0,
+      imagesSaved: 0,
+      missingImages: 0,
+      draftsCreated: 0,
+      failures: [],
+      detectedCounties: [],
+      detectedAgencies: [],
+    };
+  }
+
+  return {
+    sourceSlug: source.slug,
+    sourceName: source.sourceName,
+    skipped: false,
+    found: Array.isArray(payload.offenders) ? payload.offenders.length : 0,
+    created: 0,
+    updated: 0,
+    duplicatesSkipped: 0,
+    failed: 0,
+    imagesSaved: 0,
+    missingImages: 0,
+    draftsCreated: 0,
+    failures: payload.errorMessage ? [payload.errorMessage] : [],
+    detectedCounties: [],
+    detectedAgencies: [],
+  };
+}
+
+async function persistImage(source: OfficialSourceConfig, slug: string, imageId?: string) {
+  if (!imageId || !source.agencyCode) return undefined;
   const sasResponse = await fetchWithTimeout(
-    `${officialApiRoot()}/${OFFICIAL_AGENCY_CODE}/get-sas-image-url/${encodeURIComponent(imageId)}`,
+    `${officialSourceApiRoot()}/${source.agencyCode}/get-sas-image-url/${encodeURIComponent(imageId)}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -326,9 +439,11 @@ async function createFacebookDraft(record: {
   slug: string;
   displayName: string;
   age: number | null;
+  county: string | null;
   recordDate: Date;
   arrestingAgency: string | null;
   arrestingOfficer: string | null;
+  sourceName: string;
   imageUrl: string | null;
   imageLocalPath: string | null;
   charges: OfficialCharge[];
@@ -360,27 +475,68 @@ async function createFacebookDraft(record: {
   return { created: true, id: draft.id };
 }
 
-export async function importOfficialRosterRecords(records: ParsedOfficialRecord[]) {
+async function persistSourceRun(source: OfficialSourceConfig, summary: OfficialSourceImportSummary) {
+  if (!process.env.DATABASE_URL) return;
   const db = getDb();
-  const summary = { found: records.length, created: 0, updated: 0, duplicatesSkipped: 0, failed: 0, imagesSaved: 0, missingImages: 0, draftsCreated: 0, failures: [] as string[] };
+  await db.sourceImportRun.create({
+    data: {
+      sourceName: source.sourceName,
+      startedAt: new Date(),
+      finishedAt: new Date(),
+      recordsFound: summary.found,
+      recordsCreated: summary.created,
+      recordsSkipped: summary.duplicatesSkipped,
+      errorsJson: summary,
+    },
+  });
+}
+
+export async function importOfficialRosterRecords(
+  source: OfficialSourceConfig,
+  records: ParsedOfficialRecord[],
+): Promise<OfficialSourceImportSummary> {
+  const db = getDb();
+  const detectedCounties = new Set<string>();
+  const detectedAgencies = new Set<string>();
+  const summary: OfficialSourceImportSummary = {
+    sourceSlug: source.slug,
+    sourceName: source.sourceName,
+    skipped: false,
+    found: records.length,
+    created: 0,
+    updated: 0,
+    duplicatesSkipped: 0,
+    failed: 0,
+    imagesSaved: 0,
+    missingImages: 0,
+    draftsCreated: 0,
+    failures: [],
+    detectedCounties: [],
+    detectedAgencies: [],
+  };
+
   for (const record of records) {
+    if (record.county) detectedCounties.add(record.county);
+    if (record.arrestingAgency) detectedAgencies.add(record.arrestingAgency);
     try {
       const existing = await db.publicRecordDemo.findFirst({
         where: {
           OR: [
             { sourceRecordId: record.sourceRecordId },
-            { sourceUrl: record.sourceUrl },
             { sourceFingerprint: record.sourceFingerprint },
+            { sourceUrl: record.sourceUrl },
             { slug: record.slug },
           ],
         },
         include: { charges: true },
       });
-      const imageMissing = Boolean(record.imageId && !existing?.imageUrl && !existing?.imageLocalPath);
+
+      const imageMissing =
+        Boolean(record.imageId && !existing?.imageUrl && !existing?.imageLocalPath);
       if (existing?.sourceFingerprint === record.sourceFingerprint) {
         let imagePath = existing.imageUrl ?? existing.imageLocalPath ?? undefined;
         if (imageMissing) {
-          imagePath = await persistImage(record.slug, record.imageId);
+          imagePath = await persistImage(source, record.slug, record.imageId);
           if (imagePath) {
             await db.publicRecordDemo.update({
               where: { id: existing.id },
@@ -400,16 +556,19 @@ export async function importOfficialRosterRecords(records: ParsedOfficialRecord[
         summary.duplicatesSkipped += 1;
         continue;
       }
-      const imagePath = await persistImage(record.slug, record.imageId);
+
+      const imagePath = await persistImage(source, record.slug, record.imageId);
       if (imagePath) summary.imagesSaved += 1;
-      else summary.missingImages += 1;
+      else if (record.imageId) summary.missingImages += 1;
 
       const data = {
         slug: record.slug,
         displayName: record.displayName,
         age: record.age,
         gender: record.gender,
+        city: record.city,
         county: record.county,
+        state: record.state,
         arrestingAgency: record.arrestingAgency,
         arrestingOfficer: record.arrestingOfficer,
         sourceRecordId: record.sourceRecordId,
@@ -440,7 +599,12 @@ export async function importOfficialRosterRecords(records: ParsedOfficialRecord[
         summary.created += 1;
       }
 
-      const draft = await createFacebookDraft({ ...persisted, charges: record.charges });
+      const draft = await createFacebookDraft({
+        ...persisted,
+        county: persisted.county,
+        sourceName: persisted.sourceName,
+        charges: record.charges,
+      });
       if (draft.created) summary.draftsCreated += 1;
       else summary.duplicatesSkipped += 1;
     } catch (error) {
@@ -448,20 +612,91 @@ export async function importOfficialRosterRecords(records: ParsedOfficialRecord[
       summary.failures.push(error instanceof Error ? error.message : String(error));
     }
   }
+
+  summary.detectedCounties = [...detectedCounties].sort();
+  summary.detectedAgencies = [...detectedAgencies].sort();
   return summary;
 }
 
-export async function runOfficialSourceImport() {
-  if (process.env.OFFICIAL_SOURCE_FETCH_ENABLED !== "true") {
+async function importSource(
+  source: OfficialSourceConfig,
+  options: { fromDate?: string; toDate?: string; dryRun?: boolean } = {},
+): Promise<OfficialSourceImportSummary> {
+  if (source.fetchMode === "jtclientweb-captcha") {
+    const blocked = await fetchJailTrackerCaptchaSource(source);
+    await persistSourceRun(source, blocked);
+    return blocked;
+  }
+
+  const range = {
+    fromDate: options.fromDate ?? lastThreeEasternDays().fromDate,
+    toDate: options.toDate ?? lastThreeEasternDays().toDate,
+  };
+  const records = await fetchPublicRosterApi(source, range.fromDate, range.toDate);
+  const summary = options.dryRun
+    ? {
+        sourceSlug: source.slug,
+        sourceName: source.sourceName,
+        skipped: false,
+        range,
+        found: records.length,
+        created: 0,
+        updated: 0,
+        duplicatesSkipped: 0,
+        failed: 0,
+        imagesSaved: records.filter((record) => Boolean(record.imageId)).length,
+        missingImages: records.filter((record) => !record.imageId).length,
+        draftsCreated: 0,
+        failures: [],
+        detectedCounties: [...new Set(records.map((record) => record.county).filter(Boolean) as string[])].sort(),
+        detectedAgencies: [...new Set(records.map((record) => record.arrestingAgency).filter(Boolean) as string[])].sort(),
+      }
+    : { range, ...(await importOfficialRosterRecords(source, records)) };
+  await persistSourceRun(source, summary);
+  return summary;
+}
+
+export async function runOfficialSourceImport(options: {
+  sourceSlugs?: string[];
+  fromDate?: string;
+  toDate?: string;
+  dryRun?: boolean;
+} = {}) {
+  const manualDryRun = options.dryRun === true;
+
+  if (!manualDryRun && process.env.OFFICIAL_SOURCE_FETCH_ENABLED !== "true") {
     return { skipped: true, reason: "OFFICIAL_SOURCE_FETCH_ENABLED is not true." };
   }
-  if (process.env.AUTO_IMPORT_OFFICIAL_RECORDS !== "true") {
+  if (!manualDryRun && process.env.AUTO_IMPORT_OFFICIAL_RECORDS !== "true") {
     return { skipped: true, reason: "AUTO_IMPORT_OFFICIAL_RECORDS is not true." };
   }
-  if (process.env.AUTO_PUBLISH_VALID_IMPORTED_RECORDS !== "true") {
+  if (!manualDryRun && process.env.AUTO_PUBLISH_VALID_IMPORTED_RECORDS !== "true") {
     return { skipped: true, reason: "AUTO_PUBLISH_VALID_IMPORTED_RECORDS is not true." };
   }
-  const range = lastThreeEasternDays();
-  const records = await fetchOfficialRoster(range.fromDate, range.toDate);
-  return { skipped: false, range, ...(await importOfficialRosterRecords(records)) };
+
+  const selected = options.sourceSlugs?.length
+    ? options.sourceSlugs
+        .map((slug) => findOfficialSourceBySlug(slug))
+        .filter((source): source is OfficialSourceConfig => Boolean(source))
+    : automaticOfficialSources();
+
+  const results = [];
+  for (const source of selected) {
+    results.push(await importSource(source, options));
+  }
+
+  if (results.length === 1) return results[0];
+
+  return {
+    skipped: false,
+    sources: results,
+    found: results.reduce((sum, result) => sum + result.found, 0),
+    created: results.reduce((sum, result) => sum + result.created, 0),
+    updated: results.reduce((sum, result) => sum + result.updated, 0),
+    duplicatesSkipped: results.reduce((sum, result) => sum + result.duplicatesSkipped, 0),
+    failed: results.reduce((sum, result) => sum + result.failed, 0),
+    imagesSaved: results.reduce((sum, result) => sum + result.imagesSaved, 0),
+    missingImages: results.reduce((sum, result) => sum + result.missingImages, 0),
+    draftsCreated: results.reduce((sum, result) => sum + result.draftsCreated, 0),
+  };
 }

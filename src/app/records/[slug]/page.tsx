@@ -5,6 +5,7 @@ import { AdSlot } from "@/components/AdSlot";
 import { Mugshot } from "@/components/Mugshot";
 import { getRecord, innocenceNotice } from "@/lib/content";
 import { getDb } from "@/lib/db";
+import { findOfficialSourceByName } from "@/lib/official-sources";
 import { bookingDisplayText, publishedRecordOrder } from "@/lib/record-display";
 
 export const dynamic = "force-dynamic";
@@ -67,6 +68,7 @@ export default async function RecordPage({ params }: { params: Promise<{ slug: s
     take: 3,
   });
   const imageReference = record.imageUrl ?? ("imageLocalPath" in record ? record.imageLocalPath ?? undefined : undefined);
+  const sourceInfo = findOfficialSourceByName(record.sourceName);
 
   return (
     <main>
@@ -82,6 +84,9 @@ export default async function RecordPage({ params }: { params: Promise<{ slug: s
           </p>
           {record.age && <p><strong>Age:</strong> {record.age}</p>}
           {record.county && <p><strong>County:</strong> {record.county}</p>}
+          {sourceInfo?.facilityCounty && sourceInfo.facilityCounty !== record.county && (
+            <p><strong>Facility county:</strong> {sourceInfo.facilityCounty}</p>
+          )}
           {"city" in record && record.city && <p><strong>City:</strong> {record.city}</p>}
           {"state" in record && record.state && <p><strong>State:</strong> {record.state}</p>}
           {"arrestingAgency" in record && record.arrestingAgency && (
@@ -96,7 +101,7 @@ export default async function RecordPage({ params }: { params: Promise<{ slug: s
 
         <section className="charges-box">
           <h2>Charges Listed</h2>
-          {record.charges.map((charge, index) => (
+          {record.charges.map((charge: (typeof record.charges)[number], index: number) => (
             <div className="charge" key={`${charge.offense}-${index}`}>
               <strong>{charge.offense}</strong>
               <p>{charge.chargeDescription}</p>
@@ -113,6 +118,8 @@ export default async function RecordPage({ params }: { params: Promise<{ slug: s
             <br />
             Timestamp: {new Date(record.sourceTimestamp).toISOString()}
           </p>
+          {record.sourceUrl ? <p><a href={record.sourceUrl}>Open source link</a></p> : null}
+          {sourceInfo?.facilityCounty ? <p>Facility county: {sourceInfo.facilityCounty}</p> : null}
         </section>
         <Link className="button" href={`/correction-request?record=${record.slug}`}>
           Request correction or de-index review
@@ -121,7 +128,7 @@ export default async function RecordPage({ params }: { params: Promise<{ slug: s
         <section className="related-records">
           <h2>Latest public records</h2>
           {record.county&&<p><Link className="county-link" href={`/county/${record.county.toLowerCase()}`}>Browse more {record.county} County records</Link></p>}
-          {latest.map((item) => (
+          {latest.map((item: (typeof latest)[number]) => (
             <p key={item.slug}>
               <Link href={`/records/${item.slug}`}>{item.displayName}{item.county?` - ${item.county} County`:""}</Link>
             </p>

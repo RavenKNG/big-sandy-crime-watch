@@ -6,9 +6,11 @@ type CaptionCharge = {
 export type FacebookRecordCaption = {
   displayName: string;
   age?: number | null;
+  county?: string | null;
   recordDate?: Date | string | null;
   arrestingAgency?: string | null;
   arrestingOfficer?: string | null;
+  sourceName?: string | null;
   charges: CaptionCharge[];
 };
 
@@ -47,9 +49,14 @@ export function createFacebookRecordCaption(
   publicUrl: string,
 ): string {
   const bookingDate = formatBookingDate(record.recordDate);
+  const sourceLead = record.county
+    ? `New public record added for ${record.county} County from ${record.sourceName ?? "the public source"}.`
+    : `New public record added from ${record.sourceName ?? "the public source"}.`;
 
   return [
-    "BIG SANDY REGIONAL BOOKING UPDATE",
+    "PUBLIC RECORD UPDATE",
+    "",
+    sourceLead,
     "",
     record.displayName,
     record.age ? `Age: ${record.age}` : undefined,

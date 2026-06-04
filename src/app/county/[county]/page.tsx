@@ -13,5 +13,5 @@ export default async function CountyPage({ params }: { params: Promise<{ county:
   });
   const records = stored.map(storedRecordToDemoRecord);
 
-  return <main><p className="eyebrow">COUNTY DESK</p><h1>{county} County</h1>{records.length === 0 ? <p>No published records are available for this county.</p> : <div className="record-grid">{records.map((record) => <RecordCard key={record.slug} record={record} />)}</div>}</main>;
+  return <main><p className="eyebrow">COUNTY DESK</p><h1>{county} County</h1>{records.length === 0 ? <p>No published records are available for this county.</p> : <div className="record-grid">{records.map((record: (typeof records)[number]) => <RecordCard key={record.slug} record={record} />)}</div>}</main>;
 }

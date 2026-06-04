@@ -37,7 +37,7 @@ export default async function Home() {
           <Link href="/category/public-safety">Browse updates</Link>
         </div>
         <div className="article-grid">
-          {articles.map((article) => <article className="news-card" key={article.slug}><p className="eyebrow">{article.category} - {formatDate(article.publishedAt)}</p><h3>{article.title}</h3><p>{article.summary}</p><Link href={`/news/${article.slug}`}>Read update</Link></article>)}
+          {articles.map((article: (typeof articles)[number]) => <article className="news-card" key={article.slug}><p className="eyebrow">{article.category} - {formatDate(article.publishedAt)}</p><h3>{article.title}</h3><p>{article.summary}</p><Link href={`/news/${article.slug}`}>Read update</Link></article>)}
         </div>
       </section>
       <section id="latest-records">
@@ -45,7 +45,7 @@ export default async function Home() {
           <div><p className="eyebrow">LATEST PUBLIC RECORDS</p><h2>Latest Big Sandy Regional Bookings</h2></div>
           <Link href="/category/bookings">Browse bookings</Link>
         </div>
-        {records.length === 0 ? <p>No published booking records are available.</p> : <div className="record-grid">{records.map((record, index) => <div key={record.slug}><RecordCard record={record} />{index === 5 && <AdSlot placement="in-feed" />}</div>)}</div>}
+        {records.length === 0 ? <p>No published booking records are available.</p> : <div className="record-grid">{records.map((record: (typeof records)[number], index: number) => <div key={record.slug}><RecordCard record={record} />{index === 5 && <AdSlot placement="in-feed" />}</div>)}</div>}
       </section>
       <AdSlot placement="homepage-lower" />
       <p className="policy-links"><Link href="/disclaimer">Disclaimer</Link> | <Link href="/correction-request">Correction requests</Link> | <Link href="/privacy">Privacy</Link> | <Link href="/admin">Admin sign-in</Link></p>

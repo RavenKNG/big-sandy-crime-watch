@@ -7,6 +7,7 @@ import {
   runOfficialSourceImport,
   type VendorRosterRow,
 } from "../src/lib/official-source-import";
+import { findOfficialSourceBySlug } from "../src/lib/official-sources";
 
 describe("official BSRDC public roster parser", () => {
   afterEach(() => {
@@ -16,8 +17,11 @@ describe("official BSRDC public roster parser", () => {
   });
 
   it("maps allowlisted roster fields and a mugshot reference", () => {
-    const [record] = parseOfficialRosterRows(fixture as VendorRosterRow[]);
-    expect(record.sourceRecordId).toBe("SYNTH-OFFICIAL-001");
+    const source = findOfficialSourceBySlug("big-sandy-regional-detention-center")!;
+    const [record] = parseOfficialRosterRows(fixture as VendorRosterRow[], source);
+    expect(record.sourceRecordId).toBe(
+      "big-sandy-regional-detention-center:SYNTH-OFFICIAL-001",
+    );
     expect(record.displayName).toBe("Reviewed Q Fixture");
     expect(record.age).toBe(31);
     expect(record.arrestingAgency).toBe("Fixture Agency");
@@ -28,24 +32,27 @@ describe("official BSRDC public roster parser", () => {
   });
 
   it("preserves original booking text and missing-time state", () => {
-    const records = parseOfficialRosterRows(fixture as VendorRosterRow[]);
+    const source = findOfficialSourceBySlug("big-sandy-regional-detention-center")!;
+    const records = parseOfficialRosterRows(fixture as VendorRosterRow[], source);
     expect(records[0].bookingDateTimeText).toBe("05/31/2026 08:45:00");
     expect(records[0].bookingTimeKnown).toBe(true);
     expect(records[1].bookingTimeKnown).toBe(false);
   });
 
   it("uses a transparent unavailable-charges placeholder", () => {
-    const records = parseOfficialRosterRows(fixture as VendorRosterRow[]);
+    const source = findOfficialSourceBySlug("big-sandy-regional-detention-center")!;
+    const records = parseOfficialRosterRows(fixture as VendorRosterRow[], source);
     expect(records[1].charges[0].chargeDescription).toBe(
       "Charges unavailable from source at time of import.",
     );
   });
 
   it("creates stable fingerprints and source slugs", () => {
-    const first = parseOfficialRosterRows(fixture as VendorRosterRow[]);
-    const second = parseOfficialRosterRows(fixture as VendorRosterRow[]);
+    const source = findOfficialSourceBySlug("big-sandy-regional-detention-center")!;
+    const first = parseOfficialRosterRows(fixture as VendorRosterRow[], source);
+    const second = parseOfficialRosterRows(fixture as VendorRosterRow[], source);
     expect(first[0].sourceFingerprint).toBe(second[0].sourceFingerprint);
-    expect(first[0].slug).toContain("synth-official-001");
+    expect(first[0].slug).toContain("big-sandy-regional-detention-center");
   });
 
   it("calculates an inclusive three-Eastern-calendar-day range", () => {
@@ -55,15 +62,40 @@ describe("official BSRDC public roster parser", () => {
   });
 
   it("does not expose non-allowlisted vendor fields", () => {
+    const source = findOfficialSourceBySlug("big-sandy-regional-detention-center")!;
     const [record] = parseOfficialRosterRows([
       {
         ...(fixture[0] as VendorRosterRow),
         ssn: "000-00-0000",
         driversLicenseNumber: "SYNTHETIC-LICENSE",
       } as VendorRosterRow,
-    ]);
+    ], source);
     expect(record).not.toHaveProperty("ssn");
     expect(record).not.toHaveProperty("driversLicenseNumber");
+  });
+
+  it("falls back to the facility county when no associated county is provided", () => {
+    const source = findOfficialSourceBySlug("rowan-county-detention-center")!;
+    const [record] = parseOfficialRosterRows([
+      {
+        id: "ROWAN-1",
+        agencyOffenderPermanentId: "ROWAN-1",
+        firstName: "Rowan",
+        lastName: "Example",
+        gender: "M",
+        supervisionStatus: "Current",
+        bookDate: "06/03/2026 10:30:00",
+        detailsJson: JSON.stringify([
+          {
+            filename: "AdditionalInfo",
+            type: "nvp",
+            data: [{ Name: "Arresting Agency", Value: "Morehead Police Department" }],
+          },
+        ]),
+      },
+    ], source);
+    expect(record.county).toBe("Rowan");
+    expect(record.sourceRecordId).toBe("rowan-county-detention-center:ROWAN-1");
   });
 
   it("stays disabled unless every automatic-import flag is explicitly enabled", async () => {
