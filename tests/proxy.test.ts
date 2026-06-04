@@ -53,6 +53,13 @@ describe("admin proxy", () => {
     expect(proxy(new NextRequest("http://localhost/admin", { headers: { authorization } })).status).toBe(200);
   });
 
+  it("supports passwords containing colons", () => {
+    process.env.ADMIN_EMAIL = "admin@example.test";
+    process.env.ADMIN_PASSWORD = "test:password:with:colons";
+    const authorization = `Basic ${Buffer.from("admin@example.test:test:password:with:colons").toString("base64")}`;
+    expect(proxy(new NextRequest("http://localhost/admin", { headers: { authorization } })).status).toBe(200);
+  });
+
   it("keeps public navigation away from the protected admin route", async () => {
     const header = await readFile("src/components/SiteHeader.tsx", "utf8");
     expect(header).not.toContain('href="/admin"');

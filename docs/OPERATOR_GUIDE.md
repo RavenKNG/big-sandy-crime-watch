@@ -1,75 +1,106 @@
 # Big Sandy Crime Watch Operator Guide
 
-## Admin login
+## Core model
 
-Open `/admin` and enter the configured Basic Auth email and password. Keep those
-credentials out of screenshots, chat, source code, and documentation.
+Big Sandy has two production processes:
 
-## Create and review a manual record
+- `big-sandy-crime-watch`: the public/admin Next.js web app on `127.0.0.1:3100`
+- `big-sandy-crime-watch-automation`: the recurring import + Facebook worker
 
-1. Open `/admin/manual-entry`.
-2. Enter synthetic demo content only. Do not enter a home address.
-3. Enter one charge per line as `Offense | Statute | Description`.
-4. Save the draft and review the editorial preview.
-5. Use `PUBLISHED`, `HIDDEN`, or `REJECTED` after review.
-6. For a published record, open its public detail page from the preview.
+Both must be started from the repo root at `/opt/big-sandy-crime-watch` and both
+must load the production `.env`.
 
-## Correction requests
+## Canonical PM2 management
 
-Public visitors use `/correction-request`. Review submitted requests on `/admin`.
-Open the related record link when present and move the request through `NEW`,
-`REVIEWING`, `RESOLVED`, or `DENIED`.
-
-## Facebook manual export
-
-Open `/admin/facebook-export`. Copy the post text and target URL, publish
-manually, then mark the record manually posted only after confirming the post.
-Automated Facebook posting remains disabled.
-
-## Sponsor placeholders
-
-Open `/admin/sponsors` to save placeholder configuration. Newly saved sponsors
-remain disabled. Add a name, placement, optional text, image reference, and
-target URL. Do not enable real ads during the demo phase.
-
-## Analytics and email
-
-Analytics and correction-request email notifications remain disabled by
-default. Review correction requests manually from `/admin`.
-
-## Disabled features
-
-- Live official-source fetching
-- Real-record scraping
-- Facebook API auto-posting
-- Email notifications
-- Real sponsor display
-
-## Reviewed fixture imports
-
-The BSRDC adapter boundary is disabled by default. It accepts only a
-human-reviewed JSON fixture file and creates editorial `DRAFT` records. It
-never publishes or queues Facebook posts automatically. Do not set
-`BSRDC_IMPORT_ENABLED=true` until the source and fixture have been reviewed.
-
-## Server operations
+Do not hand-build PM2 commands. Use the tracked ecosystem file:
 
 ```bash
 cd /opt/big-sandy-crime-watch
-export PATH=/root/.nvm/versions/node/v24.11.1/bin:$PATH
-pm2 status
-pm2 logs big-sandy-crime-watch --lines 80 --nostream
-npm ci
-npx prisma generate
-npx prisma migrate deploy
-npm run build
-pm2 restart big-sandy-crime-watch --update-env
+export PATH=/root/.nvm/versions/node/v24.11.1/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+export NODE_BINARY=/root/.nvm/versions/node/v24.11.1/bin/node
+pm2 startOrReload ecosystem.config.cjs --update-env
 pm2 save
 ```
 
-Run migrations only when a reviewed schema migration is present. Do not touch
-the Raven Royale PM2 processes or Nginx configuration during this workflow.
+## Production deploy sequence
 
-Before deployment, create a dated VPS backup of `/opt/big-sandy-crime-watch`.
-The local placeholder-only recovery template is stored at
-`C:\Users\bypass\BigSandyCrimeWatch-Recovery-Template.txt`.
+```bash
+cd /opt/big-sandy-crime-watch
+export PATH=/root/.nvm/versions/node/v24.11.1/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+export NODE_BINARY=/root/.nvm/versions/node/v24.11.1/bin/node
+npm ci
+npx prisma generate
+npm run build
+pm2 startOrReload ecosystem.config.cjs --update-env
+pm2 save
+```
+
+If a reviewed Prisma migration exists, run:
+
+```bash
+npx prisma migrate deploy
+```
+
+before the build.
+
+## Required production paths
+
+- app root: `/opt/big-sandy-crime-watch`
+- persistent mugshot storage: `/opt/big-sandy-crime-watch-storage/booking-images`
+
+Never store production mugshots only inside the deploy tree.
+
+## Quick health checks
+
+```bash
+cd /opt/big-sandy-crime-watch
+export PATH=/root/.nvm/versions/node/v24.11.1/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+npm run status:automation
+pm2 status
+pm2 logs big-sandy-crime-watch --lines 80 --nostream
+pm2 logs big-sandy-crime-watch-automation --lines 80 --nostream
+```
+
+Public smoke checks:
+
+```bash
+curl -I https://bigsandycrimewatch.com/
+curl -I https://bigsandycrimewatch.com/today
+curl -I https://bigsandycrimewatch.com/county/rowan
+curl -I https://bigsandycrimewatch.com/sitemap.xml
+```
+
+## Admin access
+
+`/admin` is protected with Basic Auth from `ADMIN_EMAIL` and `ADMIN_PASSWORD`.
+
+## Facebook operations
+
+- token health: `npm run facebook:token-health`
+- diagnostics: `npm run facebook:diagnose`
+- one-shot test post: `npm run facebook:test-post -- --confirm`
+
+Do not enable `FACEBOOK_TEST_POST_ENABLED` unless you are intentionally running
+one controlled test.
+
+## Import / queue behavior
+
+- official-source import runs inside the automation worker
+- reviewed imports live under `work/approved-imports`
+- queue state is stored in PostgreSQL
+- Facebook posting cadence is controlled by `POST_INTERVAL_HOURS`
+
+## Safe recovery notes
+
+- If mugshots appear broken, check `BOOKING_IMAGE_STORAGE_DIR` first
+- If Facebook is quiet, check `facebook:token-health` and `status:automation`
+- If PM2 is online but the site is down, verify `big-sandy-crime-watch` is
+  actually bound to `127.0.0.1:3100`
+
+## Windows deploy helper
+
+For local operator use, the tracked deploy helper is:
+
+- `scripts/deploy-production.ps1`
+
+It should remain the only maintained artifact-style deploy script.

@@ -13,12 +13,13 @@ This is a synthetic-fixture demo. Do not enable a real source adapter until huma
 5. Keep `ADS_ENABLED=false`, `ANALYTICS_ENABLED=false`, and `EMAIL_NOTIFICATIONS_ENABLED=false` until reviewed.
 6. Keep `BSRDC_IMPORT_ENABLED=false`; the reviewed-fixture importer creates drafts only and live fetching remains unconfigured.
 7. Build with `npm run build`.
-8. Start with `npm run start`.
+8. Start production through `pm2 startOrReload ecosystem.config.cjs --update-env`.
 
 ## Suggested PM2 command
 
 ```bash
-pm2 start npm --name big-sandy-crime-watch -- start
+export NODE_BINARY=/root/.nvm/versions/node/v24.11.1/bin/node
+pm2 startOrReload ecosystem.config.cjs --update-env
 ```
 
 ## Manual operator workflow

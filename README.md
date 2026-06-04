@@ -36,7 +36,7 @@ In the Meta app dashboard:
 
 1. Configure Facebook Login for the app.
 2. Add the exact redirect URI from `FACEBOOK_REDIRECT_URI`.
-3. Request only: `pages_show_list`, `pages_read_engagement`, `pages_manage_posts`, `pages_manage_metadata`, and `public_profile`.
+3. Request only: `pages_show_list`, `pages_read_engagement`, `pages_manage_posts`, and `public_profile`.
 4. Open `/admin/facebook/connect` while authenticated to the site admin.
 5. Click **Reconnect Facebook** and complete Facebook Login with the profile that manages the Big Sandy Crime Watch Page.
 6. The callback validates OAuth state, exchanges the authorization response for a long-lived user token, calls `/me/accounts`, finds the configured Page, and stores the returned Page token encrypted in PostgreSQL.
@@ -78,6 +78,14 @@ Apply database migrations and generate Prisma Client before restarting the app:
 npx prisma migrate deploy
 npx prisma generate
 npm run build
+export NODE_BINARY=/root/.nvm/versions/node/v24.11.1/bin/node
+pm2 startOrReload ecosystem.config.cjs --update-env
 ```
+
+Production hardening rules:
+
+- keep `BOOKING_IMAGE_STORAGE_DIR` on persistent storage outside the deploy tree
+- run the web app and automation worker through `ecosystem.config.cjs`
+- avoid ad hoc `pm2 start npm -- ...` production commands
 
 Never commit `.env`, tokens, app secrets, encryption keys, or exported credentials.

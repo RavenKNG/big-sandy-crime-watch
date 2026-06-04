@@ -41,3 +41,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+.deploy-*.tar.gz
+deploy-big-sandy.tar
+fix-and-deploy.ps1
