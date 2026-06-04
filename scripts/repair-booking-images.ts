@@ -11,6 +11,10 @@ type VendorRosterRow = {
   agencyOffenderPermanentId?: string;
   imageUri?: string;
   bookDate?: string;
+  firstName?: string;
+  middleName?: string;
+  lastName?: string;
+  nameSuffix?: string;
 };
 
 function sourceKey(value: unknown) {
@@ -81,6 +85,27 @@ async function fetchImagePath(agencyCode: string, imageId: string, slug: string)
   );
 }
 
+function normalizeName(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function vendorDisplayName(row: VendorRosterRow) {
+  return [row.firstName, row.middleName, row.lastName, row.nameSuffix]
+    .filter((part): part is string => Boolean(part))
+    .join(" ");
+}
+
+function bookingDayKey(value?: string | Date) {
+  if (!value) return undefined;
+  if (value instanceof Date) {
+    return value.toISOString().slice(0, 10);
+  }
+  const match = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (!match) return undefined;
+  const [, month, day, year] = match;
+  return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+}
+
 async function main() {
   const source = officialSources.find((item) => item.slug === "big-sandy-regional-detention-center");
   if (!source?.agencyCode) {
@@ -97,6 +122,7 @@ async function main() {
     select: {
       id: true,
       slug: true,
+      displayName: true,
       sourceRecordId: true,
       imageUrl: true,
       imageLocalPath: true,
@@ -123,6 +149,7 @@ async function main() {
 
   const offenders = await searchOffenders(source.agencyCode, fromDate, toDate);
   const byAnyId = new Map<string, VendorRosterRow>();
+  const byNameAndDate = new Map<string, VendorRosterRow>();
   for (const offender of offenders) {
     for (const key of [
       sourceKey(offender.agencyOffenderPermanentId),
@@ -130,6 +157,11 @@ async function main() {
       sourceKey(offender.id),
     ]) {
       if (key) byAnyId.set(key, offender);
+    }
+    const name = normalizeName(vendorDisplayName(offender));
+    const dayKey = bookingDayKey(offender.bookDate);
+    if (name && dayKey) {
+      byNameAndDate.set(`${name}|${dayKey}`, offender);
     }
   }
 
@@ -141,7 +173,9 @@ async function main() {
       record.sourceRecordId?.includes(":")
         ? record.sourceRecordId.split(":").pop()
         : record.sourceRecordId ?? record.slug.split("-").at(-1);
-    const offender = key ? byAnyId.get(key) : undefined;
+    const offender =
+      (key ? byAnyId.get(key) : undefined) ??
+      byNameAndDate.get(`${normalizeName(record.displayName)}|${bookingDayKey(record.bookingDate)}`);
     if (!offender?.imageUri) {
       failures.push(`${record.slug}: no matching offender imageUri found`);
       continue;
