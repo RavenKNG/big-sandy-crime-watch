@@ -166,6 +166,7 @@ async function main() {
   }
 
   let repaired = 0;
+  let cleared = 0;
   const failures: string[] = [];
 
   for (const record of missing) {
@@ -177,12 +178,36 @@ async function main() {
       (key ? byAnyId.get(key) : undefined) ??
       byNameAndDate.get(`${normalizeName(record.displayName)}|${bookingDayKey(record.bookingDate)}`);
     if (!offender?.imageUri) {
+      await db.publicRecordDemo.update({
+        where: { id: record.id },
+        data: {
+          imageUrl: null,
+          imageLocalPath: null,
+        },
+      });
+      await db.facebookDraft.updateMany({
+        where: { recordId: record.id, imageUrl: record.imageUrl ?? record.imageLocalPath ?? undefined },
+        data: { imageUrl: null },
+      });
+      cleared += 1;
       failures.push(`${record.slug}: no matching offender imageUri found`);
       continue;
     }
 
     const imagePath = await fetchImagePath(source.agencyCode, offender.imageUri, record.slug);
     if (!imagePath) {
+      await db.publicRecordDemo.update({
+        where: { id: record.id },
+        data: {
+          imageUrl: null,
+          imageLocalPath: null,
+        },
+      });
+      await db.facebookDraft.updateMany({
+        where: { recordId: record.id, imageUrl: record.imageUrl ?? record.imageLocalPath ?? undefined },
+        data: { imageUrl: null },
+      });
+      cleared += 1;
       failures.push(`${record.slug}: unable to download image`);
       continue;
     }
@@ -207,7 +232,8 @@ async function main() {
         checked: records.length,
         missing: missing.length,
         repaired,
-        remainingMissing: missing.length - repaired,
+        cleared,
+        remainingMissing: missing.length - repaired - cleared,
         failures,
       },
       null,
