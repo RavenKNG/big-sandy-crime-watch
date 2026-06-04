@@ -31,6 +31,7 @@
     "facebook:queue-rowan-promo": "tsx scripts/queue-rowan-promo.ts",
     "fb:refresh-captions": "tsx scripts/refresh-facebook-captions.ts",
     "fb:roundup:dry-run": "tsx scripts/facebook-roundup-dry-run.ts",
+    "images:repair": "tsx scripts/repair-booking-images.ts",
     "scheduler:start": "tsx scripts/scheduler.ts",
     "automation:once": "tsx scripts/automation-runner.ts --once",
     "automation:start": "tsx scripts/automation-runner.ts",
