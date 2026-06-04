@@ -1,12 +1,13 @@
-import { ROWAN_COUNTY_SLUG, ROWAN_JAILTRACKER_URL, ROWAN_PAGE_TITLE } from "./rowan";
+import { FEATURED_COUNTY_PAGES } from "./featured-county-pages";
 
 export const ROWAN_LOOKUP_PROMO = "ROWAN_LOOKUP_PROMO";
 export const ROWAN_PROMO_COOLDOWN_HOURS = 72;
+const ROWAN_PAGE = FEATURED_COUNTY_PAGES.rowan;
 
 const siteUrl = (site = "https://bigsandycrimewatch.com") => site.replace(/\/$/, "");
 
 export function rowanLandingUrl(site?: string) {
-  const url = new URL(`/county/${ROWAN_COUNTY_SLUG}`, `${siteUrl(site)}/`);
+  const url = new URL(`/county/${ROWAN_PAGE.countySlug}`, `${siteUrl(site)}/`);
   url.search = new URLSearchParams({
     utm_source: "facebook",
     utm_medium: "social",
@@ -37,9 +38,9 @@ export function createRowanPromoCaption(rotationIndex = 0, site?: string) {
 export function rowanPromoDraftMeta(site?: string) {
   return {
     type: ROWAN_LOOKUP_PROMO,
-    pageTitle: ROWAN_PAGE_TITLE,
+    pageTitle: ROWAN_PAGE.pageTitle,
     landingUrl: rowanLandingUrl(site),
-    externalUrl: ROWAN_JAILTRACKER_URL,
+    externalUrl: ROWAN_PAGE.lookupUrl,
   };
 }
 

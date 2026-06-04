@@ -1,5 +1,6 @@
 import { articles, demoRecords } from "./demo-data";
 import { formatCountyLabel } from "./display-format";
+import { getFeaturedCountyPage } from "./featured-county-pages";
 import type { DemoRecord } from "./types";
 
 export const innocenceNotice =
@@ -46,7 +47,7 @@ export const formatDate = (value: string) =>
 export const formatCounty = formatCountyLabel;
 
 export function countyDirectoryLabel(county: string) {
-  return county === "rowan" ? "Rowan County Detention Center Inmates" : formatCounty(county);
+  return getFeaturedCountyPage(county)?.pageTitle ?? formatCounty(county);
 }
 
 export function categorize(record: DemoRecord) {

@@ -60,7 +60,7 @@ export default async function Home() {
         <h2>County and source access</h2>
         <p>
           Browse county pages for published records and public-source guidance, including the
-          Rowan County Detention Center inmate lookup page.
+          Rowan County Detention Center and Pike County Detention Center inmate lookup pages.
         </p>
         <div className="filter-row">
           {counties.map((county: (typeof counties)[number]) => (

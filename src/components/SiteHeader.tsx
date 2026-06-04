@@ -11,6 +11,7 @@ export function SiteHeader() {
         <Link href="/today">Today</Link>
         <Link href="/last-72-hours">Last 72 Hours</Link>
         <Link href="/county/rowan">Rowan</Link>
+        <Link href="/county/pike">Pike</Link>
         <Link href="/category/bookings">Bookings</Link>
         <Link href="/search">Search</Link>
       </nav>
