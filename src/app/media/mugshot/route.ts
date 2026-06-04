@@ -53,23 +53,35 @@ function fallbackSvg() {
           <stop offset="50%" stop-color="#162033"/>
           <stop offset="100%" stop-color="#090d14"/>
         </linearGradient>
+        <linearGradient id="wall" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#2a3341"/>
+          <stop offset="100%" stop-color="#1c2430"/>
+        </linearGradient>
         <linearGradient id="panel" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stop-color="rgba(228,59,63,0.22)"/>
-          <stop offset="100%" stop-color="rgba(241,184,75,0.12)"/>
+          <stop offset="0%" stop-color="rgba(228,59,63,0.18)"/>
+          <stop offset="100%" stop-color="rgba(241,184,75,0.10)"/>
         </linearGradient>
       </defs>
       <rect width="100%" height="100%" fill="url(#bg)"/>
       <rect x="40" y="40" width="720" height="920" rx="28" fill="rgba(10,14,22,0.62)" stroke="rgba(255,255,255,0.08)"/>
-      <circle cx="400" cy="320" r="126" fill="rgba(255,255,255,0.04)" stroke="rgba(241,184,75,0.28)" stroke-width="10"/>
-      <path d="M400 230l54 80h-32l40 86-62-53-62 53 40-86h-32z" fill="rgba(241,184,75,0.55)"/>
-      <rect x="110" y="560" width="580" height="180" rx="24" fill="url(#panel)" stroke="rgba(241,184,75,0.18)"/>
-      <text x="400" y="625" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="56" font-weight="800" fill="#f6f8fb">Mugshot Not Available</text>
-      <text x="400" y="676" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="700" fill="#f1b84b" letter-spacing="2">PUBLIC RECORD</text>
-      <text x="400" y="724" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="24" fill="#c9d2de">BigSandyCrimeWatch.com</text>
-      <circle cx="152" cy="846" r="66" fill="rgba(228,59,63,0.16)" stroke="rgba(228,59,63,0.38)" stroke-width="6"/>
-      <text x="152" y="832" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="800" fill="#f7f9fb">BIG SANDY</text>
-      <text x="152" y="852" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="800" fill="#f1b84b">CRIME WATCH</text>
-      <text x="152" y="872" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="700" fill="#f7f9fb">PUBLIC RECORD</text>
+      <rect x="118" y="126" width="564" height="556" rx="20" fill="url(#wall)" stroke="rgba(255,255,255,0.08)"/>
+      <line x1="210" y1="180" x2="210" y2="648" stroke="rgba(255,255,255,0.10)" stroke-width="5"/>
+      <line x1="400" y1="180" x2="400" y2="648" stroke="rgba(255,255,255,0.10)" stroke-width="5"/>
+      <line x1="590" y1="180" x2="590" y2="648" stroke="rgba(255,255,255,0.10)" stroke-width="5"/>
+      <line x1="140" y1="210" x2="660" y2="210" stroke="rgba(255,255,255,0.06)" stroke-width="3"/>
+      <line x1="140" y1="308" x2="660" y2="308" stroke="rgba(255,255,255,0.06)" stroke-width="3"/>
+      <line x1="140" y1="406" x2="660" y2="406" stroke="rgba(255,255,255,0.06)" stroke-width="3"/>
+      <line x1="140" y1="504" x2="660" y2="504" stroke="rgba(255,255,255,0.06)" stroke-width="3"/>
+      <line x1="140" y1="602" x2="660" y2="602" stroke="rgba(255,255,255,0.06)" stroke-width="3"/>
+      <rect x="182" y="704" width="436" height="86" rx="14" fill="rgba(9,13,20,0.84)" stroke="rgba(255,255,255,0.08)"/>
+      <text x="400" y="755" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="42" font-weight="800" fill="#f6f8fb">Mugshot Not Available</text>
+      <rect x="110" y="818" width="580" height="104" rx="24" fill="url(#panel)" stroke="rgba(241,184,75,0.18)"/>
+      <text x="400" y="868" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="700" fill="#f1b84b" letter-spacing="2">PUBLIC RECORD</text>
+      <text x="400" y="905" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="22" fill="#c9d2de">BigSandyCrimeWatch.com</text>
+      <circle cx="154" cy="868" r="58" fill="rgba(228,59,63,0.13)" stroke="rgba(228,59,63,0.34)" stroke-width="5"/>
+      <text x="154" y="856" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="800" fill="#f7f9fb">BIG SANDY</text>
+      <text x="154" y="874" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="800" fill="#f1b84b">CRIME WATCH</text>
+      <text x="154" y="892" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="10" font-weight="700" fill="#f7f9fb">PUBLIC RECORD</text>
     </svg>
   `.trim();
 }
@@ -87,15 +99,15 @@ function brandedSvg(source: { bytes: Buffer; mimeType: string }) {
       <rect width="100%" height="100%" fill="#0f1724"/>
       <image href="${href}" x="0" y="0" width="800" height="1000" preserveAspectRatio="xMidYMid slice"/>
       <rect x="0" y="770" width="800" height="230" fill="url(#fade)"/>
-      <rect x="24" y="804" width="226" height="154" rx="22" fill="rgba(10,14,22,0.62)" stroke="rgba(241,184,75,0.35)" stroke-width="4"/>
-      <circle cx="92" cy="880" r="44" fill="rgba(228,59,63,0.18)" stroke="rgba(228,59,63,0.52)" stroke-width="4"/>
-      <text x="92" y="872" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="10" font-weight="800" fill="#f7f9fb">BIG</text>
-      <text x="92" y="886" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="10" font-weight="800" fill="#f1b84b">SANDY</text>
-      <text x="92" y="900" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="9" font-weight="800" fill="#f7f9fb">WATCH</text>
-      <text x="156" y="862" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="800" fill="#f7f9fb">Big Sandy Crime Watch</text>
-      <text x="156" y="894" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="700" fill="#f1b84b" letter-spacing="1.3">PUBLIC RECORD</text>
-      <text x="156" y="922" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#dde5f0">BigSandyCrimeWatch.com</text>
-      <text x="776" y="960" text-anchor="end" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="700" fill="rgba(255,255,255,0.74)">BIGSANDYCRIMEWATCH.COM</text>
+      <rect x="458" y="810" width="314" height="132" rx="18" fill="rgba(8,11,16,0.56)" stroke="rgba(241,184,75,0.28)" stroke-width="3"/>
+      <circle cx="514" cy="876" r="34" fill="rgba(228,59,63,0.14)" stroke="rgba(228,59,63,0.42)" stroke-width="3"/>
+      <text x="514" y="868" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="8" font-weight="800" fill="#f7f9fb">BIG</text>
+      <text x="514" y="880" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="8" font-weight="800" fill="#f1b84b">SANDY</text>
+      <text x="514" y="892" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="7" font-weight="800" fill="#f7f9fb">WATCH</text>
+      <text x="560" y="856" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="800" fill="#f7f9fb">Big Sandy Crime Watch</text>
+      <text x="560" y="884" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="700" fill="#f1b84b" letter-spacing="1.1">PUBLIC RECORD</text>
+      <text x="560" y="914" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#dde5f0">BigSandyCrimeWatch.com</text>
+      <text x="28" y="964" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700" fill="rgba(255,255,255,0.70)">BIGSANDYCRIMEWATCH.COM</text>
     </svg>
   `.trim();
 }
@@ -113,4 +125,3 @@ export async function GET(request: Request) {
     },
   });
 }
-

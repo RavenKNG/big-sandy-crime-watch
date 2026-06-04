@@ -22,8 +22,8 @@ function envBool(name: string, fallback = false): boolean {
 function envNum(name: string, fallback: number): number {
   const value = process.env[name];
   if (!value) return fallback;
-  const parsed = Number.parseInt(value, 10);
-  return Number.isFinite(parsed) ? parsed : fallback;
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
 async function ensureDir(dir: string) {
