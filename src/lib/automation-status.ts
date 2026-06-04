@@ -112,7 +112,7 @@ export async function getAutomationStatusSnapshot() {
   if (failedCount > 0) warnings.push(`${failedCount} Facebook draft${failedCount === 1 ? "" : "s"} failed.`);
   if (postingEnabled && connection?.lastSuccessfulPostAt) {
     const hoursSincePost = (Date.now() - connection.lastSuccessfulPostAt.getTime()) / (1000 * 60 * 60);
-    const expectedIntervalHours = Number.parseInt(process.env.POST_INTERVAL_HOURS || "3", 10);
+    const expectedIntervalHours = Number.parseFloat(process.env.POST_INTERVAL_HOURS || "3");
     if (hoursSincePost > expectedIntervalHours * 2) {
       warnings.push(`No successful Facebook post in ${hoursSincePost.toFixed(1)} hours.`);
     }
@@ -121,7 +121,7 @@ export async function getAutomationStatusSnapshot() {
   return {
     postingEnabled,
     testPostingEnabled: process.env.FACEBOOK_TEST_POST_ENABLED === "true",
-    postIntervalHours: Number.parseInt(process.env.POST_INTERVAL_HOURS || "3", 10),
+    postIntervalHours: Number.parseFloat(process.env.POST_INTERVAL_HOURS || "3"),
     latestRecord,
     latestPublishedRecord,
     latestDraft,
