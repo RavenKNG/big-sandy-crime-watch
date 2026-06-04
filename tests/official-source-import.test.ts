@@ -119,10 +119,18 @@ describe("official BSRDC public roster parser", () => {
     expect(runner).toContain("setInterval(() => {\n    runOnce().catch");
   });
 
-  it("posts a mugshot through the Facebook photo endpoint when one is ready", async () => {
+  it("posts a mugshot through the Facebook photo endpoint when a raster image is ready", async () => {
     const runner = await readFile("scripts/automation-runner.ts", "utf8");
+    expect(runner).toContain("resolveFacebookPhotoUploadUrl");
     expect(runner).toContain('${imageUrl ? "photos" : "feed"}');
     expect(runner).toContain("{ message: draft.postText, url: imageUrl, access_token: pageToken }");
+  });
+
+  it("falls back to a feed post when Facebook rejects reading an uploaded image file", async () => {
+    const runner = await readFile("scripts/automation-runner.ts", "utf8");
+    expect(runner).toContain("graphError.error?.error_subcode === 1366046");
+    expect(runner).toContain('https://graph.facebook.com/v25.0/${pageId}/feed');
+    expect(runner).toContain("fallbackToFeed: true");
   });
 
   it("keeps expired-token Facebook drafts retryable for the next interval", async () => {

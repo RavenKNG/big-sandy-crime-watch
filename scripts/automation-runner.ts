@@ -26,6 +26,30 @@ function envNum(name: string, fallback: number): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+function resolveFacebookPhotoUploadUrl(imageUrl: string | null | undefined, siteUrl: string) {
+  if (!imageUrl) return null;
+
+  const absolute = new URL(imageUrl, `${siteUrl}/`);
+
+  if (absolute.pathname.replace(/\/+$/, "") === "/media/mugshot") {
+    const proxiedSrc = absolute.searchParams.get("src");
+    if (!proxiedSrc) return null;
+
+    const proxiedAbsolute = new URL(proxiedSrc, `${siteUrl}/`);
+    if (proxiedAbsolute.pathname.startsWith("/booking-images/")) {
+      return proxiedAbsolute.toString();
+    }
+
+    return null;
+  }
+
+  if (absolute.pathname.toLowerCase().endsWith(".svg")) {
+    return null;
+  }
+
+  return absolute.toString();
+}
+
 async function ensureDir(dir: string) {
   await fs.mkdir(dir, { recursive: true });
 }
@@ -239,9 +263,7 @@ async function postNextFacebookDraft() {
   }
 
   const siteUrl = (process.env.SITE_URL || "https://bigsandycrimewatch.com").replace(/\/$/, "");
-  const imageUrl = draft.imageUrl
-    ? new URL(draft.imageUrl, `${siteUrl}/`).toString()
-    : publicMugshotUrl(undefined, siteUrl);
+  const imageUrl = resolveFacebookPhotoUploadUrl(draft.imageUrl, siteUrl);
   const response = await fetch(
     `https://graph.facebook.com/v25.0/${pageId}/${imageUrl ? "photos" : "feed"}`,
     {
@@ -261,7 +283,59 @@ async function postNextFacebookDraft() {
 
   if (!response.ok) {
     const redactedJson = redactFacebookSecrets(json);
-    const graphError = json as { error?: { code?: number } };
+    const graphError = json as { error?: { code?: number; error_subcode?: number; message?: string } };
+    const failedImageRead =
+      imageUrl &&
+      graphError.error?.code === 100 &&
+      graphError.error?.error_subcode === 1366046;
+
+    if (failedImageRead) {
+      const fallbackResponse = await fetch(`https://graph.facebook.com/v25.0/${pageId}/feed`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message: draft.postText,
+          link: draft.postUrl,
+          access_token: pageToken,
+        }),
+      });
+
+      const fallbackJson = await fallbackResponse.json();
+      if (fallbackResponse.ok) {
+        await prisma.facebookDraft.update({
+          where: {
+            id: draft.id,
+          },
+          data: {
+            status: "POSTED",
+            facebookPostId: fallbackJson.post_id || fallbackJson.id,
+            errorMessage: null,
+          },
+        });
+        await markFacebookPostResult();
+
+        if (draft.recordId) {
+          await prisma.publicRecordDemo.update({
+            where: {
+              id: draft.recordId,
+            },
+            data: {
+              facebookPostStatus: "POSTED",
+            },
+          });
+        }
+
+        return {
+          posted: true,
+          fallbackToFeed: true,
+          draftId: draft.id,
+          facebookPostId: fallbackJson.post_id || fallbackJson.id,
+        };
+      }
+    }
+
     const retryableCredentialError = graphError.error?.code === 190;
     await prisma.facebookDraft.update({
       where: {
