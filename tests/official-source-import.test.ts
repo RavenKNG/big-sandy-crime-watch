@@ -119,11 +119,16 @@ describe("official BSRDC public roster parser", () => {
     expect(runner).toContain("setInterval(() => {\n    runOnce().catch");
   });
 
-  it("posts a mugshot through the Facebook photo endpoint when a raster image is ready", async () => {
+  it("publishes raster mugshots as feed posts with attached media when an image is ready", async () => {
     const runner = await readFile("scripts/automation-runner.ts", "utf8");
+    const publishHelpers = await readFile("src/lib/facebook-publish.ts", "utf8");
     expect(runner).toContain("resolveFacebookPhotoUploadUrl");
-    expect(runner).toContain('${imageUrl ? "photos" : "feed"}');
-    expect(runner).toContain("{ message: draft.postText, url: imageUrl, access_token: pageToken }");
+    expect(runner).toContain('https://graph.facebook.com/v25.0/${pageId}/photos');
+    expect(runner).toContain("createFacebookPhotoUploadForm");
+    expect(runner).toContain('https://graph.facebook.com/v25.0/${pageId}/feed');
+    expect(runner).toContain("createFacebookFeedPostForm");
+    expect(publishHelpers).toContain("published: false");
+    expect(publishHelpers).toContain('attached_media[0]');
   });
 
   it("falls back to a feed post when Facebook rejects reading an uploaded image file", async () => {

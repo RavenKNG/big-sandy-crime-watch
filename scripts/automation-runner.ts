@@ -9,6 +9,11 @@ import { publishedRecordOrder } from "../src/lib/record-display";
 import { runOfficialSourceImport } from "../src/lib/official-source-import";
 import { verifyFacebookPageToken } from "../src/lib/facebook-token-health";
 import { getFacebookCredential, markFacebookPostResult, redactFacebookSecrets } from "../src/lib/facebook-connection";
+import {
+  createFacebookFeedPostForm,
+  createFacebookPhotoUploadForm,
+  resolveFacebookPhotoUploadUrl,
+} from "../src/lib/facebook-publish";
 import { queueRowanPromoDraft } from "../src/lib/rowan-promo-runtime";
 
 const ROOT = process.cwd();
@@ -24,30 +29,6 @@ function envNum(name: string, fallback: number): number {
   if (!value) return fallback;
   const parsed = Number.parseFloat(value);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
-}
-
-function resolveFacebookPhotoUploadUrl(imageUrl: string | null | undefined, siteUrl: string) {
-  if (!imageUrl) return null;
-
-  const absolute = new URL(imageUrl, `${siteUrl}/`);
-
-  if (absolute.pathname.replace(/\/+$/, "") === "/media/mugshot") {
-    const proxiedSrc = absolute.searchParams.get("src");
-    if (!proxiedSrc) return null;
-
-    const proxiedAbsolute = new URL(proxiedSrc, `${siteUrl}/`);
-    if (proxiedAbsolute.pathname.startsWith("/booking-images/")) {
-      return proxiedAbsolute.toString();
-    }
-
-    return null;
-  }
-
-  if (absolute.pathname.toLowerCase().endsWith(".svg")) {
-    return null;
-  }
-
-  return absolute.toString();
 }
 
 async function ensureDir(dir: string) {
@@ -264,43 +245,98 @@ async function postNextFacebookDraft() {
 
   const siteUrl = (process.env.SITE_URL || "https://bigsandycrimewatch.com").replace(/\/$/, "");
   const imageUrl = resolveFacebookPhotoUploadUrl(draft.imageUrl, siteUrl);
-  const response = await fetch(
-    `https://graph.facebook.com/v25.0/${pageId}/${imageUrl ? "photos" : "feed"}`,
-    {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(
-      imageUrl
-        ? { message: draft.postText, url: imageUrl, access_token: pageToken }
-        : { message: draft.postText, link: draft.postUrl, access_token: pageToken },
-    ),
-    },
-  );
+  const createFeedLinkPost = async () =>
+    fetch(`https://graph.facebook.com/v25.0/${pageId}/feed`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: createFacebookFeedPostForm({
+        message: draft.postText,
+        link: draft.postUrl,
+        accessToken: pageToken,
+      }).toString(),
+    });
 
-  const json = await response.json();
+  const response = imageUrl
+    ? await (async () => {
+        const uploadResponse = await fetch(`https://graph.facebook.com/v25.0/${pageId}/photos`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: createFacebookPhotoUploadForm({
+            imageUrl,
+            accessToken: pageToken,
+          }).toString(),
+        });
 
-  if (!response.ok) {
-    const redactedJson = redactFacebookSecrets(json);
-    const graphError = json as { error?: { code?: number; error_subcode?: number; message?: string } };
+        const uploadJson = await uploadResponse.json();
+        if (!uploadResponse.ok) {
+          return {
+            response: uploadResponse,
+            json: uploadJson,
+            usedPhotoUpload: true,
+          };
+        }
+
+        const photoId =
+          typeof uploadJson?.id === "string"
+            ? uploadJson.id
+            : typeof uploadJson?.post_id === "string"
+              ? uploadJson.post_id
+              : null;
+
+        if (!photoId) {
+          return {
+            response: uploadResponse,
+            json: {
+              error: {
+                code: 500,
+                message: "Facebook photo upload did not return a usable media id.",
+              },
+            },
+            usedPhotoUpload: true,
+          };
+        }
+
+        const feedResponse = await fetch(`https://graph.facebook.com/v25.0/${pageId}/feed`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: createFacebookFeedPostForm({
+            message: draft.postText,
+            photoId,
+            accessToken: pageToken,
+          }).toString(),
+        });
+
+        return {
+          response: feedResponse,
+          json: await feedResponse.json(),
+          usedPhotoUpload: true,
+        };
+      })()
+    : {
+        response: await createFeedLinkPost(),
+        json: undefined as unknown,
+        usedPhotoUpload: false,
+      };
+
+  const responseJson = response.json ?? (await response.response.json());
+
+  if (!response.response.ok) {
+    const redactedJson = redactFacebookSecrets(responseJson);
+    const graphError = responseJson as { error?: { code?: number; error_subcode?: number; message?: string } };
     const failedImageRead =
       imageUrl &&
       ((graphError.error?.code === 100 && graphError.error?.error_subcode === 1366046) ||
-        (graphError.error?.code === 324 && graphError.error?.error_subcode === 2069019));
+        (graphError.error?.code === 324 && graphError.error?.error_subcode === 2069019) ||
+        graphError.error?.message?.includes("usable media id"));
 
     if (failedImageRead) {
-      const fallbackResponse = await fetch(`https://graph.facebook.com/v25.0/${pageId}/feed`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          message: draft.postText,
-          link: draft.postUrl,
-          access_token: pageToken,
-        }),
-      });
+      const fallbackResponse = await createFeedLinkPost();
 
       const fallbackJson = await fallbackResponse.json();
       if (fallbackResponse.ok) {
@@ -366,7 +402,7 @@ async function postNextFacebookDraft() {
     },
     data: {
       status: "POSTED",
-      facebookPostId: json.post_id || json.id,
+      facebookPostId: responseJson.post_id || responseJson.id,
     },
   });
   await markFacebookPostResult();
@@ -385,7 +421,7 @@ async function postNextFacebookDraft() {
   return {
     posted: true,
     draftId: draft.id,
-    facebookPostId: json.post_id || json.id,
+    facebookPostId: responseJson.post_id || responseJson.id,
   };
 }
 
