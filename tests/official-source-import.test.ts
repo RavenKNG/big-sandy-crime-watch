@@ -129,6 +129,7 @@ describe("official BSRDC public roster parser", () => {
   it("falls back to a feed post when Facebook rejects reading an uploaded image file", async () => {
     const runner = await readFile("scripts/automation-runner.ts", "utf8");
     expect(runner).toContain("graphError.error?.error_subcode === 1366046");
+    expect(runner).toContain("graphError.error?.error_subcode === 2069019");
     expect(runner).toContain('https://graph.facebook.com/v25.0/${pageId}/feed');
     expect(runner).toContain("fallbackToFeed: true");
   });

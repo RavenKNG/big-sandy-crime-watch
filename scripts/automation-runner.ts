@@ -286,8 +286,8 @@ async function postNextFacebookDraft() {
     const graphError = json as { error?: { code?: number; error_subcode?: number; message?: string } };
     const failedImageRead =
       imageUrl &&
-      graphError.error?.code === 100 &&
-      graphError.error?.error_subcode === 1366046;
+      ((graphError.error?.code === 100 && graphError.error?.error_subcode === 1366046) ||
+        (graphError.error?.code === 324 && graphError.error?.error_subcode === 2069019));
 
     if (failedImageRead) {
       const fallbackResponse = await fetch(`https://graph.facebook.com/v25.0/${pageId}/feed`, {
