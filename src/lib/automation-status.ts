@@ -1,4 +1,5 @@
 import { getDb } from "./db";
+import { getRowanPromoStatus } from "./rowan-promo-runtime";
 
 type QueueCountRow = {
   status: string;
@@ -23,6 +24,7 @@ export async function getAutomationStatusSnapshot() {
     latestPostedDraft,
     queueCounts,
     connection,
+    rowanPromo,
   ] = await Promise.all([
     db.publicRecordDemo.findFirst({
       orderBy: { createdAt: "desc" },
@@ -82,6 +84,15 @@ export async function getAutomationStatusSnapshot() {
         updatedAt: true,
       },
     }).catch(() => null),
+    getRowanPromoStatus().catch(() => ({
+      enabled: process.env.ROWAN_PROMO_ENABLED === "true",
+      pageUrl: "https://bigsandycrimewatch.com/county/rowan",
+      alreadyQueued: false,
+      lastQueuedAt: null,
+      lastPostedAt: null,
+      nextEligibleAt: null,
+      lastPostId: null,
+    })),
   ]);
 
   const counts = queueCountMap(queueCounts);
@@ -123,6 +134,7 @@ export async function getAutomationStatusSnapshot() {
       manualRequired: counts.MANUAL_REQUIRED ?? 0,
       notQueued: counts.NOT_QUEUED ?? 0,
     },
+    rowanPromo,
     connection,
     warnings,
   };

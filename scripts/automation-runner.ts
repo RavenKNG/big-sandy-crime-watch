@@ -8,6 +8,7 @@ import { publishedRecordOrder } from "../src/lib/record-display";
 import { runOfficialSourceImport } from "../src/lib/official-source-import";
 import { verifyFacebookPageToken } from "../src/lib/facebook-token-health";
 import { getFacebookCredential, markFacebookPostResult, redactFacebookSecrets } from "../src/lib/facebook-connection";
+import { queueRowanPromoDraft } from "../src/lib/rowan-promo-runtime";
 
 const ROOT = process.cwd();
 
@@ -318,6 +319,7 @@ async function runOnce(options: { skipFacebookPost?: boolean } = {}) {
   const importResults = await scanApprovedImports();
   const draftResults = await createFacebookDraftsForPublishedRecords();
   const facebookTokenHealth = await verifyFacebookPageToken();
+  const rowanPromoResult = await queueRowanPromoDraft();
   const facebookPostResult = options.skipFacebookPost
     ? { skipped: true, reason: "Startup post skipped; waiting for the configured interval." }
     : !facebookTokenHealth.healthy
@@ -337,6 +339,7 @@ async function runOnce(options: { skipFacebookPost?: boolean } = {}) {
         importResults,
         draftResults,
         facebookTokenHealth,
+        rowanPromoResult,
         facebookPostResult,
       },
       null,

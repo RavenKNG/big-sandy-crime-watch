@@ -28,6 +28,7 @@
     "facebook:diagnose": "tsx scripts/facebook-diagnose.ts",
     "status:automation": "tsx scripts/status-automation.ts",
     "facebook:test-post": "tsx scripts/facebook-test-post.ts",
+    "facebook:queue-rowan-promo": "tsx scripts/queue-rowan-promo.ts",
     "fb:refresh-captions": "tsx scripts/refresh-facebook-captions.ts",
     "fb:roundup:dry-run": "tsx scripts/facebook-roundup-dry-run.ts",
     "scheduler:start": "tsx scripts/scheduler.ts",

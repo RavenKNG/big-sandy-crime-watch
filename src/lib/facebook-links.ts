@@ -22,6 +22,17 @@ export function facebookRoundupUrl(type: "today" | "last_72_hours", site?: strin
   return url.toString();
 }
 
+export function facebookRowanLookupUrl(site?: string) {
+  const url = new URL("/county/rowan", `${siteUrl(site)}/`);
+  url.search = new URLSearchParams({
+    utm_source: "facebook",
+    utm_medium: "social",
+    utm_campaign: "rowan_lookup_promo",
+    utm_content: "landing_page",
+  }).toString();
+  return url.toString();
+}
+
 const innocenceNotice =
   "Charges are allegations. Individuals are presumed innocent unless proven guilty in court.";
 

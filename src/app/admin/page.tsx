@@ -78,6 +78,18 @@ export default async function AdminPage() {
         <Link className="button" href="/admin/facebook-export">Open export queue</Link>
       </section>
 
+      <section className="admin-card">
+        <h2>Rowan promo</h2>
+        <p>Enabled: {automation.rowanPromo.enabled ? "yes" : "no"}</p>
+        <p>Already queued: {automation.rowanPromo.alreadyQueued ? "yes" : "no"}</p>
+        <p>Last queued: {automation.rowanPromo.lastQueuedAt?.toISOString() ?? "never"}</p>
+        <p>Last posted: {automation.rowanPromo.lastPostedAt?.toISOString() ?? "never"}</p>
+        <p>Next eligible: {automation.rowanPromo.nextEligibleAt?.toISOString() ?? "unknown"}</p>
+        <p>
+          Landing page: <Link href="/county/rowan">/county/rowan</Link>
+        </p>
+      </section>
+
       <h2>Saved records</h2>
       {records.map((record: (typeof records)[number]) => <p key={record.id}><Link href={`/admin/records/${record.slug}`}>{record.displayName}</Link> - {record.publishStatus}</p>)}
 

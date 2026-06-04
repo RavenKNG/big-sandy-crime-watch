@@ -2,7 +2,7 @@ import Link from "next/link";
 import { AdSlot } from "@/components/AdSlot";
 import { RecordCard } from "@/components/RecordCard";
 import { articles } from "@/lib/demo-data";
-import { formatDate } from "@/lib/content";
+import { counties, formatDate } from "@/lib/content";
 import { getDb } from "@/lib/db";
 import { publishedRecordOrder, storedRecordToDemoRecord } from "@/lib/record-display";
 
@@ -29,6 +29,13 @@ export default async function Home() {
           <Link className="secondary-button" href="/last-72-hours">Last 72 Hours</Link>
           <Link className="secondary-button" href="/category/bookings">Booking Archive</Link>
           <Link className="secondary-button" href="/correction-request">Request a correction</Link>
+        </div>
+        <div className="filter-row">
+          {counties.map((county: (typeof counties)[number]) => (
+            <Link className="pill" href={`/county/${county}`} key={county}>
+              {county.charAt(0).toUpperCase() + county.slice(1)} County
+            </Link>
+          ))}
         </div>
       </section>
       <section>
