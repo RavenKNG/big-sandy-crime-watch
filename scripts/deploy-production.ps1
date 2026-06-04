@@ -17,23 +17,25 @@ if (Test-Path $archive) {
 git archive --format=tar.gz -o $archive HEAD
 scp $archive "${remoteHost}:/tmp/big-sandy-deploy.tar.gz"
 
-$remoteScript = @"
+$remoteScript = @'
 set -euo pipefail
-cd $remoteRoot
-backup="/opt/backups/big-sandy-crime-watch-pre-deploy-\$(date +%Y%m%d-%H%M%S).tar.gz"
+cd __REMOTE_ROOT__
+backup="/opt/backups/big-sandy-crime-watch-pre-deploy-$(date +%Y%m%d-%H%M%S).tar.gz"
 tar -czf "\$backup" -C /opt big-sandy-crime-watch
-tar -xzf /tmp/big-sandy-deploy.tar.gz -C $remoteRoot
-$nodeBin -e "require('node:fs').writeFileSync('.build-sha', '$shortCommit\n')"
-if ! $nodeBin ./node_modules/npm/bin/npm-cli.js ci; then
+tar -xzf /tmp/big-sandy-deploy.tar.gz -C __REMOTE_ROOT__
+__NODE_BIN__ -e "require('node:fs').writeFileSync('.build-sha', '__SHORT_COMMIT__\n')"
+if ! __NODE_BIN__ ./node_modules/npm/bin/npm-cli.js ci; then
   echo "npm ci failed on server, falling back to npm install" >&2
-  $nodeBin ./node_modules/npm/bin/npm-cli.js install
+  __NODE_BIN__ ./node_modules/npm/bin/npm-cli.js install
 fi
-$nodeBin ./node_modules/prisma/build/index.js generate
-$nodeBin ./node_modules/next/dist/bin/next build
-NODE_BINARY=$nodeBin /root/.nvm/versions/node/v24.11.1/bin/pm2 startOrReload ecosystem.config.cjs --update-env
+__NODE_BIN__ ./node_modules/prisma/build/index.js generate
+__NODE_BIN__ ./node_modules/next/dist/bin/next build
+NODE_BINARY=__NODE_BIN__ /root/.nvm/versions/node/v24.11.1/bin/pm2 startOrReload ecosystem.config.cjs --update-env
 /root/.nvm/versions/node/v24.11.1/bin/pm2 save
 rm -f /tmp/big-sandy-deploy.tar.gz
-"@
+'@
+
+$remoteScript = $remoteScript.Replace("__REMOTE_ROOT__", $remoteRoot).Replace("__NODE_BIN__", $nodeBin).Replace("__SHORT_COMMIT__", $shortCommit)
 
 ssh $remoteHost $remoteScript
 
