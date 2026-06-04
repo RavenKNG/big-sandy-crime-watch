@@ -11,6 +11,10 @@ import {
   officialSourceRosterUrl,
   type OfficialSourceConfig,
 } from "./official-sources";
+import {
+  bookingImageExists,
+  writeBookingImageFromBuffer,
+} from "./booking-image-storage";
 
 type VendorDetailSection = {
   filename?: string;
@@ -427,11 +431,7 @@ async function persistImage(source: OfficialSourceConfig, slug: string, imageId?
   if (!response.ok) return undefined;
   const contentType = response.headers.get("content-type") ?? "";
   const extension = contentType.includes("png") ? ".png" : ".jpg";
-  const publicDir = path.join(process.cwd(), "public", "booking-images", slug);
-  await fs.mkdir(publicDir, { recursive: true });
-  const destination = path.join(publicDir, `mugshot${extension}`);
-  await fs.writeFile(destination, Buffer.from(await response.arrayBuffer()));
-  return `/booking-images/${slug}/mugshot${extension}`;
+  return writeBookingImageFromBuffer(slug, extension, Buffer.from(await response.arrayBuffer()));
 }
 
 async function createFacebookDraft(record: {
@@ -531,10 +531,12 @@ export async function importOfficialRosterRecords(
         include: { charges: true },
       });
 
+      const existingImageReference = existing?.imageUrl ?? existing?.imageLocalPath ?? undefined;
       const imageMissing =
-        Boolean(record.imageId && !existing?.imageUrl && !existing?.imageLocalPath);
+        Boolean(record.imageId) &&
+        (!existingImageReference || !(await bookingImageExists(existingImageReference)));
       if (existing?.sourceFingerprint === record.sourceFingerprint) {
-        let imagePath = existing.imageUrl ?? existing.imageLocalPath ?? undefined;
+        let imagePath = existingImageReference;
         if (imageMissing) {
           imagePath = await persistImage(source, record.slug, record.imageId);
           if (imagePath) {

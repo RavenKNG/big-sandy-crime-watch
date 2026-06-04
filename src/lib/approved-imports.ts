@@ -4,6 +4,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { createFacebookRecordCaption } from "./facebook-record-caption";
 import { todayBounds } from "./record-display";
+import { copyBookingImageFromFile } from "./booking-image-storage";
 export type ReviewedCharge = {
   offense?: string;
   arrestCode?: string;
@@ -380,14 +381,7 @@ async function ensureRecordTemplate(folder: string): Promise<string> {
 
 async function copyImageToPublic(recordSlug: string, imageInfo: ImageInfo | null): Promise<string | undefined> {
   if (!imageInfo) return undefined;
-
-  const publicDir = path.join(process.cwd(), "public", "booking-images", recordSlug);
-  await fs.mkdir(publicDir, { recursive: true });
-
-  const destination = path.join(publicDir, `mugshot${imageInfo.extension}`);
-  await fs.copyFile(imageInfo.absolutePath, destination);
-
-  return `/booking-images/${recordSlug}/mugshot${imageInfo.extension}`;
+  return copyBookingImageFromFile(recordSlug, imageInfo.extension, imageInfo.absolutePath);
 }
 
 function makeFacebookPostText(record: ReviewedRecord, publicUrl: string): string {
