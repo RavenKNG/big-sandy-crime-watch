@@ -4,6 +4,7 @@ import path from "node:path";
 import { importApprovedFolder } from "../src/lib/approved-imports";
 import { createFacebookRecordCaption } from "../src/lib/facebook-record-caption";
 import { facebookRecordUrl } from "../src/lib/facebook-links";
+import { publicMugshotUrl } from "../src/lib/mugshot-public";
 import { publishedRecordOrder } from "../src/lib/record-display";
 import { runOfficialSourceImport } from "../src/lib/official-source-import";
 import { verifyFacebookPageToken } from "../src/lib/facebook-token-health";
@@ -177,7 +178,7 @@ async function createFacebookDraftsForPublishedRecords() {
         scheduledFor: new Date(),
         postText,
         postUrl,
-        imageUrl: record.imageUrl || record.imageLocalPath,
+        imageUrl: publicMugshotUrl(record.imageUrl || record.imageLocalPath, siteUrl),
       },
     });
 
@@ -240,7 +241,7 @@ async function postNextFacebookDraft() {
   const siteUrl = (process.env.SITE_URL || "https://bigsandycrimewatch.com").replace(/\/$/, "");
   const imageUrl = draft.imageUrl
     ? new URL(draft.imageUrl, `${siteUrl}/`).toString()
-    : undefined;
+    : publicMugshotUrl(undefined, siteUrl);
   const response = await fetch(
     `https://graph.facebook.com/v25.0/${pageId}/${imageUrl ? "photos" : "feed"}`,
     {

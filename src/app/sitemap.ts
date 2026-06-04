@@ -2,8 +2,9 @@ import type { MetadataRoute } from "next";
 import { articles } from "@/lib/demo-data";
 import { categories, counties } from "@/lib/content";
 import { getDb } from "@/lib/db";
+import { formatCountyName } from "@/lib/display-format";
 
-const base = "https://BigSandyCrimeWatch.com";
+const base = "https://bigsandycrimewatch.com";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const db = process.env.DATABASE_URL ? getDb() : null;
@@ -25,7 +26,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...new Set([
       ...counties,
       ...dynamicCounties
-        .map((county: (typeof dynamicCounties)[number]) => county.county?.toLowerCase())
+        .map((county: (typeof dynamicCounties)[number]) => formatCountyName(county.county)?.toLowerCase())
         .filter((county: string | undefined): county is string => Boolean(county)),
     ]),
   ];

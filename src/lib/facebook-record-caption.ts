@@ -1,3 +1,5 @@
+import { formatBookingDateTime, formatCountyLabel } from "./display-format";
+
 type CaptionCharge = {
   offense?: string | null;
   chargeDescription: string;
@@ -17,19 +19,6 @@ export type FacebookRecordCaption = {
 const innocenceNotice =
   "Charges are allegations. Individuals are presumed innocent unless proven guilty in court.";
 
-function formatBookingDate(value?: Date | string | null): string | undefined {
-  if (!value) return undefined;
-  const date = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(date.getTime())) return undefined;
-  return date.toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
-
 function chargeTeaser(charges: CaptionCharge[], publicUrl: string): string {
   if (
     charges.length === 0 ||
@@ -48,9 +37,10 @@ export function createFacebookRecordCaption(
   record: FacebookRecordCaption,
   publicUrl: string,
 ): string {
-  const bookingDate = formatBookingDate(record.recordDate);
-  const sourceLead = record.county
-    ? `New public record added for ${record.county} County from ${record.sourceName ?? "the public source"}.`
+  const bookingDate = formatBookingDateTime(record.recordDate, true);
+  const countyLabel = formatCountyLabel(record.county);
+  const sourceLead = countyLabel
+    ? `New public record added for ${countyLabel} from ${record.sourceName ?? "the public source"}.`
     : `New public record added from ${record.sourceName ?? "the public source"}.`;
 
   return [

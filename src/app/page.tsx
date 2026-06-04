@@ -2,7 +2,7 @@ import Link from "next/link";
 import { AdSlot } from "@/components/AdSlot";
 import { RecordCard } from "@/components/RecordCard";
 import { articles } from "@/lib/demo-data";
-import { counties, formatDate } from "@/lib/content";
+import { counties, countyDirectoryLabel, formatDate } from "@/lib/content";
 import { getDb } from "@/lib/db";
 import { publishedRecordOrder, storedRecordToDemoRecord } from "@/lib/record-display";
 
@@ -33,7 +33,7 @@ export default async function Home() {
         <div className="filter-row">
           {counties.map((county: (typeof counties)[number]) => (
             <Link className="pill" href={`/county/${county}`} key={county}>
-              {county.charAt(0).toUpperCase() + county.slice(1)} County
+              {countyDirectoryLabel(county)}
             </Link>
           ))}
         </div>
@@ -55,6 +55,21 @@ export default async function Home() {
         {records.length === 0 ? <p>No published booking records are available.</p> : <div className="record-grid">{records.map((record: (typeof records)[number], index: number) => <div key={record.slug}><RecordCard record={record} />{index === 5 && <AdSlot placement="in-feed" />}</div>)}</div>}
       </section>
       <AdSlot placement="homepage-lower" />
+      <section className="content-card source-directory">
+        <p className="eyebrow">COUNTY LOOKUP DIRECTORY</p>
+        <h2>County and source access</h2>
+        <p>
+          Browse county pages for published records and public-source guidance, including the
+          Rowan County Detention Center inmate lookup page.
+        </p>
+        <div className="filter-row">
+          {counties.map((county: (typeof counties)[number]) => (
+            <Link className="pill" href={`/county/${county}`} key={`directory-${county}`}>
+              {countyDirectoryLabel(county)}
+            </Link>
+          ))}
+        </div>
+      </section>
       <p className="policy-links"><Link href="/disclaimer">Disclaimer</Link> | <Link href="/correction-request">Correction requests</Link> | <Link href="/privacy">Privacy</Link> | <Link href="/admin">Admin sign-in</Link></p>
     </main>
   );

@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { createFacebookRecordCaption } from "./facebook-record-caption";
+import { publicMugshotUrl } from "./mugshot-public";
 import { todayBounds } from "./record-display";
 import { copyBookingImageFromFile } from "./booking-image-storage";
 export type ReviewedCharge = {
@@ -418,7 +419,7 @@ async function createFacebookDraft(recordId: string, recordSlug: string, record:
       scheduledFor: new Date(),
       postText,
       postUrl,
-      imageUrl: imagePath,
+      imageUrl: publicMugshotUrl(imagePath, process.env.SITE_URL),
     },
   });
 }

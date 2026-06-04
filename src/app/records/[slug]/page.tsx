@@ -5,6 +5,8 @@ import { AdSlot } from "@/components/AdSlot";
 import { Mugshot } from "@/components/Mugshot";
 import { getRecord, innocenceNotice } from "@/lib/content";
 import { getDb } from "@/lib/db";
+import { countySlug, formatCountyLabel, formatCountyName } from "@/lib/display-format";
+import { publicMugshotUrl } from "@/lib/mugshot-public";
 import { findOfficialSourceByName } from "@/lib/official-sources";
 import { bookingDisplayText, publishedRecordOrder } from "@/lib/record-display";
 
@@ -24,13 +26,14 @@ export async function generateMetadata({
   const name = stored?.publishStatus === "PUBLISHED" ? stored.displayName : fixture?.displayName;
   if (!name) return {};
 
-  const county = stored?.county ? `${stored.county} County, KY` : "the Big Sandy region of Kentucky";
+  const county = stored?.county ? `${formatCountyLabel(stored.county)}, KY` : "the Big Sandy region of Kentucky";
   const description = `Booking information for ${name} in ${county}. County, full charges, and booking details are available from public source records. Individuals are presumed innocent unless proven guilty.`;
+  const openGraphImage = publicMugshotUrl(stored?.imageUrl ?? stored?.imageLocalPath, process.env.SITE_URL);
   return {
-    title: `${name} Booking Record - ${stored?.county ? `${stored.county} County, KY` : "Big Sandy Region"}`,
+    title: `${name} Booking Record - ${stored?.county ? `${formatCountyLabel(stored.county)}, KY` : "Big Sandy Region"}`,
     description,
     alternates: { canonical: `/records/${slug}` },
-    openGraph: { title: `${name} Booking Record - Big Sandy Region`, description, url: `/records/${slug}`, type: "article", images: stored?.imageUrl ?? stored?.imageLocalPath ? [{ url: stored.imageUrl ?? stored.imageLocalPath! }] : undefined },
+    openGraph: { title: `${name} Booking Record - Big Sandy Region`, description, url: `/records/${slug}`, type: "article", images: [{ url: openGraphImage }] },
   };
 }
 
@@ -47,7 +50,7 @@ export default async function RecordPage({ params }: { params: Promise<{ slug: s
           ...stored,
           recordDate: stored.recordDate.toISOString(),
           sourceTimestamp: stored.sourceTimestamp.toISOString(),
-          county: stored.county ?? "",
+          county: formatCountyName(stored.county) ?? "",
           city: stored.city ?? undefined,
           state: stored.state ?? undefined,
           status: stored.status ?? "",
@@ -68,6 +71,7 @@ export default async function RecordPage({ params }: { params: Promise<{ slug: s
     take: 3,
   });
   const imageReference = record.imageUrl ?? ("imageLocalPath" in record ? record.imageLocalPath ?? undefined : undefined);
+  const recordCountySlug = countySlug(record.county);
   const sourceInfo = findOfficialSourceByName(record.sourceName);
 
   return (
@@ -83,9 +87,9 @@ export default async function RecordPage({ params }: { params: Promise<{ slug: s
             <strong>Booking date:</strong> {bookingDisplayText(record)}
           </p>
           {record.age && <p><strong>Age:</strong> {record.age}</p>}
-          {record.county && <p><strong>County:</strong> {record.county}</p>}
-          {sourceInfo?.facilityCounty && sourceInfo.facilityCounty !== record.county && (
-            <p><strong>Facility county:</strong> {sourceInfo.facilityCounty}</p>
+          {record.county && <p><strong>County:</strong> {formatCountyLabel(record.county)}</p>}
+          {sourceInfo?.facilityCounty && formatCountyName(sourceInfo.facilityCounty) !== formatCountyName(record.county) && (
+            <p><strong>Facility county:</strong> {formatCountyLabel(sourceInfo.facilityCounty)}</p>
           )}
           {"city" in record && record.city && <p><strong>City:</strong> {record.city}</p>}
           {"state" in record && record.state && <p><strong>State:</strong> {record.state}</p>}
@@ -119,7 +123,7 @@ export default async function RecordPage({ params }: { params: Promise<{ slug: s
             Timestamp: {new Date(record.sourceTimestamp).toISOString()}
           </p>
           {record.sourceUrl ? <p><a href={record.sourceUrl}>Open source link</a></p> : null}
-          {sourceInfo?.facilityCounty ? <p>Facility county: {sourceInfo.facilityCounty}</p> : null}
+          {sourceInfo?.facilityCounty ? <p>Facility county: {formatCountyLabel(sourceInfo.facilityCounty)}</p> : null}
         </section>
         <Link className="button" href={`/correction-request?record=${record.slug}`}>
           Request correction or de-index review
@@ -127,10 +131,16 @@ export default async function RecordPage({ params }: { params: Promise<{ slug: s
 
         <section className="related-records">
           <h2>Latest public records</h2>
-          {record.county&&<p><Link className="county-link" href={`/county/${record.county.toLowerCase()}`}>Browse more {record.county} County records</Link></p>}
+          {record.county && recordCountySlug ? (
+            <p>
+              <Link className="county-link" href={`/county/${recordCountySlug}`}>
+                Browse more {formatCountyLabel(record.county)} records
+              </Link>
+            </p>
+          ) : null}
           {latest.map((item: (typeof latest)[number]) => (
             <p key={item.slug}>
-              <Link href={`/records/${item.slug}`}>{item.displayName}{item.county?` - ${item.county} County`:""}</Link>
+              <Link href={`/records/${item.slug}`}>{item.displayName}{item.county?` - ${formatCountyLabel(item.county)}`:""}</Link>
             </p>
           ))}
           <p><Link href="/today">Browse today&apos;s regional bookings</Link></p>

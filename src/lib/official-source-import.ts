@@ -3,6 +3,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { getDb } from "./db";
 import { createFacebookRecordCaption } from "./facebook-record-caption";
+import { publicMugshotUrl } from "./mugshot-public";
 import { facebookRecordUrl } from "./facebook-links";
 import {
   automaticOfficialSources,
@@ -465,7 +466,7 @@ async function createFacebookDraft(record: {
       scheduledFor: new Date(),
       postText: createFacebookRecordCaption(record, postUrl),
       postUrl,
-      imageUrl: record.imageUrl || record.imageLocalPath,
+      imageUrl: publicMugshotUrl(record.imageUrl || record.imageLocalPath, process.env.SITE_URL),
     },
   });
   await db.publicRecordDemo.update({

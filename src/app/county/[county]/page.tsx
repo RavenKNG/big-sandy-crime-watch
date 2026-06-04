@@ -1,5 +1,7 @@
 import { RecordCard } from "@/components/RecordCard";
 import Link from "next/link";
+import { counties, countyDirectoryLabel } from "@/lib/content";
+import { formatCountyLabel } from "@/lib/display-format";
 import { getDb } from "@/lib/db";
 import { publishedRecordOrder, storedRecordToDemoRecord } from "@/lib/record-display";
 import { isRowanCounty, ROWAN_JAILTRACKER_URL, ROWAN_PAGE_TITLE } from "@/lib/rowan";
@@ -23,7 +25,7 @@ export async function generateMetadata({
   }
 
   return {
-    title: `${county.charAt(0).toUpperCase() + county.slice(1)} County`,
+    title: formatCountyLabel(county),
     alternates: { canonical: `/county/${county}` },
   };
 }
@@ -41,7 +43,7 @@ export default async function CountyPage({ params }: { params: Promise<{ county:
   return (
     <main>
       <p className="eyebrow">COUNTY DESK</p>
-      <h1>{isRowan ? ROWAN_PAGE_TITLE : `${county} County`}</h1>
+      <h1>{isRowan ? ROWAN_PAGE_TITLE : formatCountyLabel(county)}</h1>
 
       {isRowan ? (
         <section className="content-card">
@@ -66,6 +68,9 @@ export default async function CountyPage({ params }: { params: Promise<{ county:
             <Link className="secondary-button" href="/last-72-hours">
               Browse regional public record updates
             </Link>
+            <Link className="secondary-button" href="/search?county=Rowan">
+              Search Rowan on site
+            </Link>
           </div>
           {records.length === 0 ? (
             <p>
@@ -85,6 +90,21 @@ export default async function CountyPage({ params }: { params: Promise<{ county:
           ))}
         </div>
       )}
+      <section className="content-card source-directory">
+        <p className="eyebrow">COUNTY DIRECTORY</p>
+        <h2>Browse county pages</h2>
+        <div className="filter-row">
+          {counties.map((entry) => (
+            <Link className="pill" href={`/county/${entry}`} key={entry}>
+              {countyDirectoryLabel(entry)}
+            </Link>
+          ))}
+        </div>
+      </section>
+      <p className="policy-links">
+        <Link href="/today">Today</Link> | <Link href="/last-72-hours">Last 72 Hours</Link> |{" "}
+        <Link href="/search">Search</Link> | <Link href="/correction-request">Correction requests</Link>
+      </p>
     </main>
   );
 }

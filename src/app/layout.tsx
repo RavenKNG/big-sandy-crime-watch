@@ -3,6 +3,7 @@ import "./globals.css";
 import { AdSlot } from "@/components/AdSlot";
 import { Analytics } from "@/components/Analytics";
 import { SiteHeader } from "@/components/SiteHeader";
+import { publicMugshotUrl } from "@/lib/mugshot-public";
 
 const description = "Public booking information from the Big Sandy region. County, agency, charges, and booking details are available from public source records. All individuals are presumed innocent unless proven guilty in court.";
 
@@ -12,15 +13,16 @@ export const metadata: Metadata = {
     template: "%s | Big Sandy Crime Watch",
   },
   description,
-  metadataBase: new URL("https://BigSandyCrimeWatch.com"),
+  metadataBase: new URL("https://bigsandycrimewatch.com"),
   alternates: { canonical: "/" },
   verification: { google: process.env.SEARCH_CONSOLE_VERIFICATION || undefined },
   openGraph: {
     title: "Big Sandy Crime Watch - Regional Booking Updates",
     description,
-    url: "https://BigSandyCrimeWatch.com",
+    url: "https://bigsandycrimewatch.com",
     siteName: "Big Sandy Crime Watch",
     type: "website",
+    images: [{ url: publicMugshotUrl(undefined, "https://bigsandycrimewatch.com") }],
   },
 };
 
@@ -31,7 +33,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body><SiteHeader />{children}<footer><AdSlot placement="footer" /><strong>Big Sandy Crime Watch</strong><p>Regional public-safety news and attributed public booking records.</p></footer><Analytics /></body>
+      <body><SiteHeader />{children}<footer><AdSlot placement="footer" /><strong>Big Sandy Crime Watch</strong><p>Regional public-safety news and attributed public booking records.</p><p className="footer-links"><a href="/county/rowan">Rowan County Detention Center Inmates</a> | <a href="/disclaimer">Disclaimer</a> | <a href="/correction-request">Correction requests</a></p></footer><Analytics /></body>
     </html>
   );
 }

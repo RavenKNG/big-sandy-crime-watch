@@ -1,5 +1,6 @@
 import type { PublicRecordDemo, ChargeDemo } from "@prisma/client";
 import type { DemoRecord } from "./types";
+import { formatBookingDateTime, formatCountyName } from "./display-format";
 
 export const publishedRecordOrder = [
   { bookingDate: "desc" as const },
@@ -17,7 +18,7 @@ export function storedRecordToDemoRecord(record: StoredRecordWithCharges): DemoR
     age: record.age ?? undefined,
     gender: record.gender ?? undefined,
     city: record.city ?? undefined,
-    county: record.county ?? "",
+    county: formatCountyName(record.county),
     state: record.state ?? undefined,
     arrestingAgency: record.arrestingAgency ?? undefined,
     arrestingOfficer: record.arrestingOfficer ?? undefined,
@@ -40,9 +41,11 @@ export function storedRecordToDemoRecord(record: StoredRecordWithCharges): DemoR
 }
 
 export function bookingDisplayText(record: Pick<DemoRecord, "bookingDateTimeText" | "recordDate" | "bookingTimeKnown">) {
-  if (record.bookingDateTimeText) return record.bookingDateTimeText;
-  const fallback = new Date(record.recordDate).toLocaleDateString();
-  return record.bookingTimeKnown ? fallback : `${fallback} - time unknown`;
+  return (
+    formatBookingDateTime(record.bookingDateTimeText, record.bookingTimeKnown) ||
+    formatBookingDateTime(record.recordDate, record.bookingTimeKnown) ||
+    "Date unavailable"
+  );
 }
 
 export function todayBounds(now = new Date()) {

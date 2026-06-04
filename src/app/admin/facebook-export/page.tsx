@@ -3,6 +3,7 @@ import { CopyDraftButton } from "@/components/CopyDraftButton";
 import { articles } from "@/lib/demo-data";
 import { getDb } from "@/lib/db";
 import { createArticleDraft, createRecordDraft } from "@/lib/facebook";
+import { publicMugshotUrl } from "@/lib/mugshot-public";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +31,7 @@ export default async function FacebookExportPage() {
         <h2>Editorial update</h2>
         <Export
           text={createArticleDraft(articles[0])}
-          url={`https://BigSandyCrimeWatch.com/news/${articles[0].slug}`}
+          url={`https://bigsandycrimewatch.com/news/${articles[0].slug}`}
         />
 
         <h2>Reviewed synthetic records</h2>
@@ -58,8 +59,8 @@ export default async function FacebookExportPage() {
                   status: record.status ?? "",
                   charges: [],
                 })}
-                url={`https://BigSandyCrimeWatch.com/records/${record.slug}`}
-                image={record.imageUrl ?? record.imageLocalPath ?? undefined}
+                url={`https://bigsandycrimewatch.com/records/${record.slug}`}
+                image={publicMugshotUrl(record.imageUrl ?? record.imageLocalPath ?? undefined)}
               />
               <p>
                 Status: <span className="pill">{record.facebookPostStatus}</span>
