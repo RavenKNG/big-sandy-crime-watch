@@ -123,6 +123,7 @@ describe("official BSRDC public roster parser", () => {
     const deploy = await readFile("scripts/deploy-production.ps1", "utf8");
     expect(deploy).toContain("pm2 delete big-sandy-crime-watch-automation");
     expect(deploy).toContain("pm2 start ecosystem.config.cjs --only big-sandy-crime-watch-automation");
+    expect(deploy).toContain('grep -q "node_modules/tsx/dist/cli.mjs"');
   });
 
   it("publishes raster mugshots as feed posts with attached media when an image is ready", async () => {
