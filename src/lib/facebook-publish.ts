@@ -31,6 +31,7 @@ export function createFacebookFeedPostForm(input: {
   const form = createFacebookGraphForm({
     message: input.message,
     access_token: input.accessToken,
+    published: true,
     link: input.photoId ? undefined : input.link,
   });
 

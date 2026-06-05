@@ -11,7 +11,11 @@ async function main() {
   const response = await fetch(`${FACEBOOK_GRAPH_ROOT}/${credential.pageId}/feed`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message: "Big Sandy Crime Watch connection test. Automated posting remains disabled.", access_token: credential.pageToken }),
+    body: JSON.stringify({
+      message: "Big Sandy Crime Watch connection test. Automated posting remains disabled.",
+      published: true,
+      access_token: credential.pageToken,
+    }),
   });
   const json = await response.json();
   if (!response.ok) {

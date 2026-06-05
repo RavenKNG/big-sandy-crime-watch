@@ -26,6 +26,7 @@ describe("facebook publish helpers", () => {
     });
 
     expect(form.get("message")).toBe("PUBLIC RECORD UPDATE");
+    expect(form.get("published")).toBe("true");
     expect(form.get("attached_media[0]")).toBe(JSON.stringify({ media_fbid: "12345" }));
     expect(form.get("link")).toBeNull();
   });
@@ -37,6 +38,7 @@ describe("facebook publish helpers", () => {
       link: "https://bigsandycrimewatch.com/records/example",
     });
 
+    expect(form.get("published")).toBe("true");
     expect(form.get("link")).toBe("https://bigsandycrimewatch.com/records/example");
     expect(form.get("attached_media[0]")).toBeNull();
   });
