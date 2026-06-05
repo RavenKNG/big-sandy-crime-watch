@@ -130,11 +130,17 @@ export async function verifyFacebookPageToken() {
   const postingScopePresent = scopes.includes("pages_manage_posts");
   const type = metadata?.type ?? "UNKNOWN";
   const publicVisibilityRisk = appMode.detected && appMode.isLive === false;
-  const visibilityWarnings = publicVisibilityRisk
-    ? [
-        "Meta app is in Development mode. Automated Page posts may be visible only to admins/app-role users until the app is published and Facebook is reconnected.",
-      ]
-    : [];
+  const appModeManuallyVerify = !appMode.detected && Boolean(appMode.error)
+    ? "Meta app Live/Development mode could not be read from Graph. If admins can see posts but non-admins cannot, verify the app is Published in Meta for Developers and reconnect Facebook."
+    : null;
+  const visibilityWarnings = [
+    ...(publicVisibilityRisk
+      ? [
+          "Meta app is in Development mode. Automated Page posts may be visible only to admins/app-role users until the app is published and Facebook is reconnected.",
+        ]
+      : []),
+    ...(appModeManuallyVerify ? [appModeManuallyVerify] : []),
+  ];
   const healthy =
     pageIdMatched &&
     pageNameMatched &&
@@ -154,6 +160,7 @@ export async function verifyFacebookPageToken() {
     tokenType: type,
     appModeDetected: appMode.detected,
     appLiveMode: appMode.detected ? appMode.isLive : undefined,
+    appModeCheckNote: appModeManuallyVerify ?? undefined,
     appIdPresent: Boolean(metadata?.app_id),
     application: metadata?.application ?? appMode.appName,
     debugTokenAvailable: debug.ok,
