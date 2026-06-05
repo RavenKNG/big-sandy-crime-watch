@@ -23,7 +23,7 @@ set -euo pipefail
 export PATH=/root/.nvm/versions/node/v24.11.1/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 cd __REMOTE_ROOT__
 backup="/opt/backups/big-sandy-crime-watch-pre-deploy-$(date +%Y%m%d-%H%M%S).tar.gz"
-tar -czf "\$backup" -C /opt big-sandy-crime-watch
+tar --warning=no-file-changed -czf "$backup" -C /opt big-sandy-crime-watch
 tar -xzf /tmp/big-sandy-deploy.tar.gz -C __REMOTE_ROOT__
 __NODE_BIN__ -e "require('node:fs').writeFileSync('.build-sha', '__SHORT_COMMIT__\n')"
 if ! __NODE_BIN__ __NPM_CLI__ ci; then
@@ -41,7 +41,7 @@ rm -f /tmp/big-sandy-deploy.tar.gz
 
 $remoteScript = $remoteScript.Replace("__REMOTE_ROOT__", $remoteRoot).Replace("__NODE_BIN__", $nodeBin).Replace("__NPM_CLI__", $npmCli).Replace("__SHORT_COMMIT__", $shortCommit)
 
-ssh $remoteHost $remoteScript
+$remoteScript | ssh $remoteHost bash -s
 
 curl.exe -I https://bigsandycrimewatch.com/
 curl.exe -I https://bigsandycrimewatch.com/today
