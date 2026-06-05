@@ -61,6 +61,19 @@ pm2 logs big-sandy-crime-watch --lines 80 --nostream
 pm2 logs big-sandy-crime-watch-automation --lines 80 --nostream
 ```
 
+The automation worker should show `node_modules/tsx/dist/cli.mjs` as its PM2
+script path. If PM2 shows the Node binary itself as the script path, the worker
+is using a stale process definition and will crash-loop with an `ELF` syntax
+error instead of posting.
+
+Repair that state by recreating the automation worker from the ecosystem file:
+
+```bash
+pm2 delete big-sandy-crime-watch-automation
+NODE_BINARY=/root/.nvm/versions/node/v24.11.1/bin/node pm2 start ecosystem.config.cjs --only big-sandy-crime-watch-automation --update-env
+pm2 save
+```
+
 Public smoke checks:
 
 ```bash

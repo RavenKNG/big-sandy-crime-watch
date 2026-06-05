@@ -32,7 +32,9 @@ if ! __NODE_BIN__ __NPM_CLI__ ci; then
 fi
 __NODE_BIN__ ./node_modules/prisma/build/index.js generate
 __NODE_BIN__ ./node_modules/next/dist/bin/next build
-NODE_BINARY=__NODE_BIN__ /root/.nvm/versions/node/v24.11.1/bin/pm2 startOrReload ecosystem.config.cjs --update-env
+NODE_BINARY=__NODE_BIN__ /root/.nvm/versions/node/v24.11.1/bin/pm2 startOrReload ecosystem.config.cjs --only big-sandy-crime-watch --update-env
+/root/.nvm/versions/node/v24.11.1/bin/pm2 delete big-sandy-crime-watch-automation || true
+NODE_BINARY=__NODE_BIN__ /root/.nvm/versions/node/v24.11.1/bin/pm2 start ecosystem.config.cjs --only big-sandy-crime-watch-automation --update-env
 /root/.nvm/versions/node/v24.11.1/bin/pm2 save
 rm -f /tmp/big-sandy-deploy.tar.gz
 '@

@@ -119,6 +119,12 @@ describe("official BSRDC public roster parser", () => {
     expect(runner).toContain("setInterval(() => {\n    runOnce().catch");
   });
 
+  it("recreates the PM2 automation process from the tracked ecosystem file during deploy", async () => {
+    const deploy = await readFile("scripts/deploy-production.ps1", "utf8");
+    expect(deploy).toContain("pm2 delete big-sandy-crime-watch-automation");
+    expect(deploy).toContain("pm2 start ecosystem.config.cjs --only big-sandy-crime-watch-automation");
+  });
+
   it("publishes raster mugshots as feed posts with attached media when an image is ready", async () => {
     const runner = await readFile("scripts/automation-runner.ts", "utf8");
     const publishHelpers = await readFile("src/lib/facebook-publish.ts", "utf8");
