@@ -23,6 +23,12 @@ type DebugTokenResponse = GraphError & {
   };
 };
 
+type AppModeResponse = GraphError & {
+  id?: string;
+  name?: string;
+  is_live?: boolean;
+};
+
 function isoTimestamp(value?: number): string | undefined {
   return value && value > 0
     ? new Date(value * 1000).toISOString()
@@ -46,6 +52,32 @@ async function graphJson<T extends GraphError>(
     headers: { Authorization: `Bearer ${token}` },
   });
   return { ok: response.ok, json: (await response.json()) as T };
+}
+
+async function inspectFacebookAppMode() {
+  const appId = process.env.FACEBOOK_APP_ID;
+  const appSecret = process.env.FACEBOOK_APP_SECRET;
+  if (!appId || !appSecret) {
+    return {
+      detected: false,
+      isLive: undefined as boolean | undefined,
+      appName: undefined as string | undefined,
+      error: undefined as ReturnType<typeof safeGraphError> | undefined,
+    };
+  }
+
+  const appAccessToken = `${appId}|${appSecret}`;
+  const app = await graphJson<AppModeResponse>(
+    `${FACEBOOK_GRAPH_ROOT}/${encodeURIComponent(appId)}?fields=id,name,is_live`,
+    appAccessToken,
+  );
+
+  return {
+    detected: app.ok && typeof app.json.is_live === "boolean",
+    isLive: app.json.is_live,
+    appName: app.json.name,
+    error: app.ok ? undefined : safeGraphError(app.json),
+  };
 }
 
 export async function verifyFacebookPageToken() {
@@ -82,6 +114,7 @@ export async function verifyFacebookPageToken() {
     `${FACEBOOK_GRAPH_ROOT}/debug_token?input_token=${encodeURIComponent(pageToken)}`,
     pageToken,
   );
+  const appMode = await inspectFacebookAppMode();
   const metadata = debug.json.data;
   const scopes = metadata?.scopes ?? [];
   const expiresAt = isoTimestamp(metadata?.expires_at);
@@ -96,6 +129,12 @@ export async function verifyFacebookPageToken() {
   const pageNameMatched = me.json.name === EXPECTED_PAGE_NAME;
   const postingScopePresent = scopes.includes("pages_manage_posts");
   const type = metadata?.type ?? "UNKNOWN";
+  const publicVisibilityRisk = appMode.detected && appMode.isLive === false;
+  const visibilityWarnings = publicVisibilityRisk
+    ? [
+        "Meta app is in Development mode. Automated Page posts may be visible only to admins/app-role users until the app is published and Facebook is reconnected.",
+      ]
+    : [];
   const healthy =
     pageIdMatched &&
     pageNameMatched &&
@@ -113,22 +152,29 @@ export async function verifyFacebookPageToken() {
     pageNameMatched,
     pageName: me.json.name,
     tokenType: type,
+    appModeDetected: appMode.detected,
+    appLiveMode: appMode.detected ? appMode.isLive : undefined,
     appIdPresent: Boolean(metadata?.app_id),
-    application: metadata?.application,
+    application: metadata?.application ?? appMode.appName,
     debugTokenAvailable: debug.ok,
     expiresAt,
     dataAccessExpiresAt,
     expiresSoon,
     criticalTokenExpiration,
-    acceptableForLongRunningAutomation: healthy && !expiresSoon,
+    acceptableForLongRunningAutomation: healthy && !expiresSoon && !publicVisibilityRisk,
     postingScopePresent,
     scopes,
+    publicVisibilityRisk,
+    visibilityWarnings,
     actionRequired: !healthy
       ? "Replace the invalid Facebook Page access token."
-      : expiresSoon
-        ? `Replace or renew the Facebook Page access token before ${expiresAt}.`
-        : undefined,
+      : publicVisibilityRisk
+        ? "Publish the Meta app, reconnect Facebook through /admin/facebook/connect, and verify only a brand-new post for public visibility."
+        : expiresSoon
+          ? `Replace or renew the Facebook Page access token before ${expiresAt}.`
+          : undefined,
     error: debug.ok ? undefined : safeGraphError(debug.json),
+    appModeError: appMode.error,
   };
   await updateFacebookConnectionHealth({ status: healthy ? criticalTokenExpiration ? "CRITICAL" : expiresSoon ? "WARNING" : "HEALTHY" : "INVALID", expiresAt, dataAccessExpiresAt, error: result.error });
   return result;

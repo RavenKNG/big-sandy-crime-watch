@@ -83,6 +83,51 @@ curl -I https://bigsandycrimewatch.com/sitemap.xml
 Do not enable `FACEBOOK_TEST_POST_ENABLED` unless you are intentionally running
 one controlled test.
 
+### Facebook app-mode incident note
+
+Symptom:
+
+- admins can see automated booking posts
+- non-admin visitors cannot open the exact post permalink or see the booking feed
+- the same visitors can still see the Page shell, manual posts, and/or the Photos tab
+
+Confirmed cause:
+
+- the Meta app (`BSCW Page Poster`) was still unpublished / in Development mode
+- Graph API posts were effectively limited to Page managers, app-role users, or both
+
+Fix:
+
+1. Publish the Meta app in Meta for Developers.
+2. Reconnect Facebook through `/admin/facebook/connect`.
+3. Run:
+
+   ```bash
+   npm run facebook:token-health
+   npm run status:automation
+   ```
+
+4. Verify only a **brand-new** automated post with a non-admin viewer.
+
+Do not trust older automated posts as proof after an app-mode change. Repost an
+important old item manually if public visibility matters.
+
+### Current Facebook publish path
+
+Big Sandy currently publishes mugshot posts this way:
+
+1. upload the mugshot to `/{page-id}/photos` with `published=false`
+2. create the final `/{page-id}/feed` post with `attached_media`
+3. explicitly send `published=true` on the final feed post
+
+It does **not** send:
+
+- `no_story`
+- `targeting`
+- `unpublished_content_type`
+- `scheduled_publish_time`
+- dark-post fields
+
 ## Import / queue behavior
 
 - official-source import runs inside the automation worker

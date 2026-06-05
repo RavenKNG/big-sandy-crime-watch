@@ -128,7 +128,12 @@ describe("official BSRDC public roster parser", () => {
     expect(runner).toContain('https://graph.facebook.com/v25.0/${pageId}/feed');
     expect(runner).toContain("createFacebookFeedPostForm");
     expect(publishHelpers).toContain("published: false");
+    expect(publishHelpers).toContain("published: true");
     expect(publishHelpers).toContain('attached_media[0]');
+    expect(publishHelpers).not.toContain("no_story");
+    expect(publishHelpers).not.toContain("unpublished_content_type");
+    expect(publishHelpers).not.toContain("scheduled_publish_time");
+    expect(publishHelpers).not.toContain("targeting");
   });
 
   it("falls back to a feed post when Facebook rejects reading an uploaded image file", async () => {
@@ -157,6 +162,8 @@ describe("official BSRDC public roster parser", () => {
     expect(health).toContain("getFacebookCredential()");
     expect(health).toContain("acceptableForLongRunningAutomation");
     expect(health).toContain("criticalTokenExpiration");
+    expect(health).toContain("is_live");
+    expect(health).toContain("publicVisibilityRisk");
   });
 
   it("queues tagged public record URLs for future Facebook posts", async () => {

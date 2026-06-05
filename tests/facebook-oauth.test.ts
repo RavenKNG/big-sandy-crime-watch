@@ -44,5 +44,12 @@ describe("admin Facebook reconnect workflow", () => {
     const testPost = await readFile("scripts/facebook-test-post.ts", "utf8");
     expect(testPost).toContain('process.env.FACEBOOK_TEST_POST_ENABLED !== "true"');
     expect(testPost).toContain('process.argv.includes("--confirm")');
+    expect(testPost).toContain("published: true");
+  });
+
+  it("tells operators to reconnect after publishing or changing the Meta app mode", async () => {
+    const connectPage = await readFile("src/app/admin/facebook/connect/page.tsx", "utf8");
+    expect(connectPage).toContain("switch it out of Development mode");
+    expect(connectPage).toContain("verify only a brand-new post publicly");
   });
 });
