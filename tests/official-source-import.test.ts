@@ -153,8 +153,9 @@ describe("official BSRDC public roster parser", () => {
 
   it("keeps expired-token Facebook drafts retryable for the next interval", async () => {
     const runner = await readFile("scripts/automation-runner.ts", "utf8");
-    expect(runner).toContain("graphError.error?.code === 190");
-    expect(runner).toContain('status: retryableCredentialError ? "DRAFTED" : "FAILED"');
+    expect(runner).toContain("isRetryableFacebookGraphError");
+    expect(runner).toContain("[1, 2, 4, 17, 32, 190, 613]");
+    expect(runner).toContain('status: retryableFacebookError ? "DRAFTED" : "FAILED"');
     expect(runner).toContain('envNum("POST_INTERVAL_HOURS", 3) * 60 * 60 * 1000');
   });
 

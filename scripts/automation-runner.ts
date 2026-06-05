@@ -31,6 +31,14 @@ function envNum(name: string, fallback: number): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+function isRetryableFacebookGraphError(error?: { code?: number; error_subcode?: number; message?: string }) {
+  if (!error?.code) return false;
+
+  // Meta's generic/transient platform errors should pause and retry on the next cadence,
+  // not strand a draft as permanently failed.
+  return [1, 2, 4, 17, 32, 190, 613].includes(error.code);
+}
+
 async function ensureDir(dir: string) {
   await fs.mkdir(dir, { recursive: true });
 }
@@ -372,14 +380,14 @@ async function postNextFacebookDraft() {
       }
     }
 
-    const retryableCredentialError = graphError.error?.code === 190;
+    const retryableFacebookError = isRetryableFacebookGraphError(graphError.error);
     await prisma.facebookDraft.update({
       where: {
         id: draft.id,
       },
       data: {
-        status: retryableCredentialError ? "DRAFTED" : "FAILED",
-        scheduledFor: retryableCredentialError
+        status: retryableFacebookError ? "DRAFTED" : "FAILED",
+        scheduledFor: retryableFacebookError
           ? new Date(Date.now() + envNum("POST_INTERVAL_HOURS", 3) * 60 * 60 * 1000)
           : draft.scheduledFor,
         errorMessage: JSON.stringify(redactedJson),
@@ -390,7 +398,7 @@ async function postNextFacebookDraft() {
     return {
       posted: false,
       failed: true,
-      retryable: retryableCredentialError,
+      retryable: retryableFacebookError,
       error: JSON.stringify(redactedJson),
       draftId: draft.id,
     };
