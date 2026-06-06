@@ -3,9 +3,10 @@ import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { createFacebookRecordCaption } from "./facebook-record-caption";
-import { publicMugshotUrl } from "./mugshot-public";
 import { todayBounds } from "./record-display";
 import { copyBookingImageFromFile } from "./booking-image-storage";
+import { generateBookingCardImages } from "./booking-card-generator";
+import { absoluteSiteUrl } from "./display-format";
 export type ReviewedCharge = {
   offense?: string;
   arrestCode?: string;
@@ -412,6 +413,19 @@ async function createFacebookDraft(recordId: string, recordSlug: string, record:
 
   if (existing) return existing;
 
+  const bookingCards = await generateBookingCardImages({
+    slug: recordSlug,
+    displayName: record.fullName,
+    age: record.age,
+    bookingDateTimeText: record.bookingDateTimeText ?? record.intakeDate,
+    bookingTimeKnown: record.bookingTimeKnown,
+    recordDate: record.intakeDate,
+    arrestingAgency: record.arrestingAgency,
+    sourceName: record.sourceName,
+    imageUrl: imagePath ?? record.imageUrl,
+    imageLocalPath: imagePath ?? record.imageLocalPath,
+  });
+
   return prisma.facebookDraft.create({
     data: {
       recordId,
@@ -419,7 +433,7 @@ async function createFacebookDraft(recordId: string, recordSlug: string, record:
       scheduledFor: new Date(),
       postText,
       postUrl,
-      imageUrl: publicMugshotUrl(imagePath, process.env.SITE_URL),
+      imageUrl: absoluteSiteUrl(bookingCards.previewPath, process.env.SITE_URL),
     },
   });
 }

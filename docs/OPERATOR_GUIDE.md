@@ -46,9 +46,10 @@ before the build.
 ## Required production paths
 
 - app root: `/opt/big-sandy-crime-watch`
-- persistent mugshot storage: `/opt/big-sandy-crime-watch-storage/booking-images`
+- persistent booking image storage: `/opt/big-sandy-crime-watch-storage/booking-images`
 
-Never store production mugshots only inside the deploy tree.
+Never store production mugshots or generated booking cards only inside the
+deploy tree.
 
 ## Quick health checks
 
@@ -127,11 +128,16 @@ important old item manually if public visibility matters.
 
 ### Current Facebook publish path
 
-Big Sandy currently publishes mugshot posts this way:
+Big Sandy currently publishes booking-card image posts this way:
 
-1. upload the mugshot to `/{page-id}/photos` with `published=false`
-2. create the final `/{page-id}/feed` post with `attached_media`
-3. explicitly send `published=true` on the final feed post
+1. generate/store a branded `booking-card-preview.png` beside the raw mugshot
+2. upload that booking-card image to `/{page-id}/photos` with `published=false`
+3. create the final `/{page-id}/feed` post with `attached_media`
+4. explicitly send `published=true` on the final feed post
+
+The website record page and Open Graph image use `booking-card-full.png` when
+available. The raw mugshot remains stored for source preservation and for
+rebuilding cards.
 
 It does **not** send:
 

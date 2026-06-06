@@ -5,12 +5,14 @@ import { createFacebookRoundupCaption, facebookRecordUrl, facebookRoundupUrl } f
 const publicUrl = "https://bigsandycrimewatch.com/records/example-record";
 
 describe("Facebook record captions", () => {
-  it("uses a short teaser instead of listing multiple charges", () => {
+  it("shows booking facts before click without listing multiple charges", () => {
     const caption = createFacebookRecordCaption(
       {
         displayName: "Example Person",
         age: 33,
         county: "Johnson",
+        bookingDateTimeText: "2026-06-01T12:30:00.000Z",
+        bookingTimeKnown: true,
         recordDate: "2026-06-01T12:30:00.000Z",
         arrestingAgency: "Example Agency",
         arrestingOfficer: "Officer Example",
@@ -23,15 +25,13 @@ describe("Facebook record captions", () => {
       publicUrl,
     );
 
-    expect(caption).toContain("PUBLIC RECORD UPDATE");
-    expect(caption).toContain(
-      "New public record added for Johnson County from Big Sandy Regional Detention Center Public Roster.",
-    );
-    expect(caption).toContain("Example Person");
-    expect(caption).toContain("Age: 33");
-    expect(caption).toContain("Arresting agency: Example Agency");
-    expect(caption).toContain("Arresting officer: Officer Example");
-    expect(caption).toContain(`Booking details, county, and full charge list: ${publicUrl}`);
+    expect(caption).toContain("🚨 BOOKING REPORT: Example Person, 33");
+    expect(caption).toContain("📅 Booked: June 1, 2026 at 8:30 AM");
+    expect(caption).toContain("🏛️ Agency: Example Agency");
+    expect(caption).toContain("Full charges & details:");
+    expect(caption).toContain(publicUrl);
+    expect(caption).not.toContain("Johnson County");
+    expect(caption).not.toContain("Officer Example");
     expect(caption).not.toContain("First full charge description");
     expect(caption).not.toContain("Second full charge description");
   });
@@ -46,13 +46,12 @@ describe("Facebook record captions", () => {
       publicUrl,
     );
 
-    expect(caption).toContain(
-      "New public record added from Big Sandy Regional Detention Center Public Roster.",
-    );
-    expect(caption).toContain(`Full booking details and charges available on the website: ${publicUrl}`);
+    expect(caption).toContain("🚨 BOOKING REPORT: Example Person");
+    expect(caption).toContain("🏛️ Agency: Big Sandy Regional Detention Center Public Roster");
+    expect(caption).toContain(publicUrl);
     expect(caption).not.toContain("Full single charge text");
     expect(caption).toContain(
-      "Charges are allegations. Individuals are presumed innocent unless proven guilty in court.",
+      "An arrest does not imply guilt. All individuals are presumed innocent unless proven guilty in court.",
     );
   });
 

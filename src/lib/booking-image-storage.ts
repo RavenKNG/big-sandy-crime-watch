@@ -15,6 +15,14 @@ export function bookingImagePublicPath(recordSlug: string, extension: string) {
   return `${BOOKING_IMAGE_URL_PREFIX}${recordSlug}/mugshot${extension}`;
 }
 
+export function bookingGeneratedImagePublicPath(
+  recordSlug: string,
+  kind: "preview" | "full",
+  extension = ".png",
+) {
+  return `${BOOKING_IMAGE_URL_PREFIX}${recordSlug}/booking-card-${kind}${extension}`;
+}
+
 export function bookingImageAbsolutePathFromPublicPath(publicPath: string) {
   if (!publicPath.startsWith(BOOKING_IMAGE_URL_PREFIX)) return undefined;
   const relativePath = publicPath.slice(BOOKING_IMAGE_URL_PREFIX.length);
@@ -61,4 +69,15 @@ export async function writeBookingImageFromBuffer(
   const destination = path.join(directory, `mugshot${extension}`);
   await fs.writeFile(destination, bytes);
   return bookingImagePublicPath(recordSlug, extension);
+}
+
+export async function writeBookingGeneratedImageFromBuffer(
+  recordSlug: string,
+  kind: "preview" | "full",
+  bytes: Uint8Array,
+) {
+  const directory = await ensureBookingImageDirectory(recordSlug);
+  const destination = path.join(directory, `booking-card-${kind}.png`);
+  await fs.writeFile(destination, bytes);
+  return bookingGeneratedImagePublicPath(recordSlug, kind);
 }

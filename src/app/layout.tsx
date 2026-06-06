@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import "./globals.css";
 import { AdSlot } from "@/components/AdSlot";
 import { Analytics } from "@/components/Analytics";
@@ -33,7 +34,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body><SiteHeader />{children}<footer><AdSlot placement="footer" /><strong>Big Sandy Crime Watch</strong><p>Regional public-safety news and attributed public booking records.</p><p className="footer-links"><a href="/county/rowan">Rowan County Detention Center Inmates</a> | <a href="/county/pike">Pike County Detention Center Inmates</a> | <a href="/disclaimer">Disclaimer</a> | <a href="/correction-request">Correction requests</a></p></footer><Analytics /></body>
+      <body><SiteHeader />{children}<footer><AdSlot placement="footer" /><strong>Big Sandy Crime Watch</strong><p>Regional public-safety news and attributed public booking records.</p><p className="footer-links"><Link href="/county/rowan">Rowan County Detention Center Inmates</Link> | <Link href="/county/pike">Pike County Detention Center Inmates</Link> | <Link href="/disclaimer">Disclaimer</Link> | <Link href="/correction-request">Correction requests</Link></p></footer><Analytics /></body>
     </html>
   );
 }

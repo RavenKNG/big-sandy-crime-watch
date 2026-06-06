@@ -35,6 +35,7 @@
     "facebook:queue-rowan-promo": "node --env-file=.env ./node_modules/tsx/dist/cli.mjs scripts/queue-rowan-promo.ts",
     "fb:refresh-captions": "node --env-file=.env ./node_modules/tsx/dist/cli.mjs scripts/refresh-facebook-captions.ts",
     "fb:roundup:dry-run": "node --env-file=.env ./node_modules/tsx/dist/cli.mjs scripts/facebook-roundup-dry-run.ts",
+    "images:booking-card-samples": "node ./node_modules/tsx/dist/cli.mjs scripts/generate-booking-card-samples.ts",
     "images:repair": "node --env-file=.env ./node_modules/tsx/dist/cli.mjs scripts/repair-booking-images.ts",
     "scheduler:start": "node --env-file=.env ./node_modules/tsx/dist/cli.mjs scripts/scheduler.ts",
     "automation:once": "node --env-file=.env ./node_modules/tsx/dist/cli.mjs scripts/automation-runner.ts --once",
@@ -48,6 +49,7 @@
     "pg": "^8.21.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "sharp": "^0.34.5",
     "tsx": "^4.22.3",
     "zod": "^4.4.3"
   },

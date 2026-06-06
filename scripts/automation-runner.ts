@@ -2,9 +2,10 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { importApprovedFolder } from "../src/lib/approved-imports";
+import { generateBookingCardImages } from "../src/lib/booking-card-generator";
+import { absoluteSiteUrl } from "../src/lib/display-format";
 import { createFacebookRecordCaption } from "../src/lib/facebook-record-caption";
 import { facebookRecordUrl } from "../src/lib/facebook-links";
-import { publicMugshotUrl } from "../src/lib/mugshot-public";
 import { publishedRecordOrder } from "../src/lib/record-display";
 import { runOfficialSourceImport } from "../src/lib/official-source-import";
 import { verifyFacebookPageToken } from "../src/lib/facebook-token-health";
@@ -183,6 +184,7 @@ async function createFacebookDraftsForPublishedRecords() {
 
     const postUrl = facebookRecordUrl(record.slug, siteUrl);
     const postText = createFacebookRecordCaption(record, postUrl);
+    const bookingCards = await generateBookingCardImages(record);
 
     await prisma.facebookDraft.create({
       data: {
@@ -191,7 +193,7 @@ async function createFacebookDraftsForPublishedRecords() {
         scheduledFor: new Date(),
         postText,
         postUrl,
-        imageUrl: publicMugshotUrl(record.imageUrl || record.imageLocalPath, siteUrl),
+        imageUrl: absoluteSiteUrl(bookingCards.previewPath, siteUrl),
       },
     });
 

@@ -1,10 +1,9 @@
 import crypto from "node:crypto";
-import fs from "node:fs/promises";
-import path from "node:path";
 import { getDb } from "./db";
 import { createFacebookRecordCaption } from "./facebook-record-caption";
-import { publicMugshotUrl } from "./mugshot-public";
 import { facebookRecordUrl } from "./facebook-links";
+import { generateBookingCardImages } from "./booking-card-generator";
+import { absoluteSiteUrl } from "./display-format";
 import {
   automaticOfficialSources,
   findOfficialSourceBySlug,
@@ -442,6 +441,8 @@ async function createFacebookDraft(record: {
   age: number | null;
   county: string | null;
   recordDate: Date;
+  bookingDateTimeText: string | null;
+  bookingTimeKnown: boolean;
   arrestingAgency: string | null;
   arrestingOfficer: string | null;
   sourceName: string;
@@ -459,6 +460,7 @@ async function createFacebookDraft(record: {
     return { created: false, id: existing.id };
   }
   const postUrl = facebookRecordUrl(record.slug, process.env.SITE_URL);
+  const bookingCards = await generateBookingCardImages(record);
   const draft = await db.facebookDraft.create({
     data: {
       recordId: record.id,
@@ -466,7 +468,7 @@ async function createFacebookDraft(record: {
       scheduledFor: new Date(),
       postText: createFacebookRecordCaption(record, postUrl),
       postUrl,
-      imageUrl: publicMugshotUrl(record.imageUrl || record.imageLocalPath, process.env.SITE_URL),
+      imageUrl: absoluteSiteUrl(bookingCards.previewPath, process.env.SITE_URL),
     },
   });
   await db.publicRecordDemo.update({

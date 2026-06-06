@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import Image from "next/image";
 import Link from "next/link";
 import { AdSlot } from "@/components/AdSlot";
 import { Mugshot } from "@/components/Mugshot";
+import { ensureBookingCardImages } from "@/lib/booking-card-generator";
 import { getRecord, innocenceNotice } from "@/lib/content";
 import { getDb } from "@/lib/db";
-import { countySlug, formatCountyLabel, formatCountyName } from "@/lib/display-format";
+import { absoluteSiteUrl, countySlug, formatCountyLabel, formatCountyName } from "@/lib/display-format";
 import { publicMugshotUrl } from "@/lib/mugshot-public";
 import { findOfficialSourceByName } from "@/lib/official-sources";
 import { bookingDisplayText, publishedRecordOrder } from "@/lib/record-display";
@@ -20,7 +22,20 @@ export async function generateMetadata({
   const slug = (await params).slug;
   const stored = await getDb().publicRecordDemo.findUnique({
     where: { slug },
-    select: { displayName: true, county: true, publishStatus: true, imageUrl: true, imageLocalPath: true },
+    select: {
+      slug: true,
+      displayName: true,
+      age: true,
+      county: true,
+      publishStatus: true,
+      bookingDateTimeText: true,
+      bookingTimeKnown: true,
+      recordDate: true,
+      arrestingAgency: true,
+      sourceName: true,
+      imageUrl: true,
+      imageLocalPath: true,
+    },
   });
   const fixture = process.env.NODE_ENV === "production" ? undefined : getRecord(slug);
   const name = stored?.publishStatus === "PUBLISHED" ? stored.displayName : fixture?.displayName;
@@ -28,7 +43,15 @@ export async function generateMetadata({
 
   const county = stored?.county ? `${formatCountyLabel(stored.county)}, KY` : "the Big Sandy region of Kentucky";
   const description = `Booking information for ${name} in ${county}. County, full charges, and booking details are available from public source records. Individuals are presumed innocent unless proven guilty.`;
-  const openGraphImage = publicMugshotUrl(stored?.imageUrl ?? stored?.imageLocalPath, process.env.SITE_URL);
+  let openGraphImage = publicMugshotUrl(stored?.imageUrl ?? stored?.imageLocalPath, process.env.SITE_URL);
+  if (stored?.publishStatus === "PUBLISHED") {
+    try {
+      const cards = await ensureBookingCardImages(stored);
+      openGraphImage = absoluteSiteUrl(cards.fullPath, process.env.SITE_URL);
+    } catch {
+      // Fall back to the legacy branded mugshot route if card generation fails.
+    }
+  }
   return {
     title: `${name} Booking Record - ${stored?.county ? `${formatCountyLabel(stored.county)}, KY` : "Big Sandy Region"}`,
     description,
@@ -73,13 +96,43 @@ export default async function RecordPage({ params }: { params: Promise<{ slug: s
   const imageReference = record.imageUrl ?? ("imageLocalPath" in record ? record.imageLocalPath ?? undefined : undefined);
   const recordCountySlug = countySlug(record.county);
   const sourceInfo = findOfficialSourceByName(record.sourceName);
+  let bookingCardImage: string | undefined;
+  try {
+    const cards = await ensureBookingCardImages({
+      slug: record.slug,
+      displayName: record.displayName,
+      age: record.age,
+      bookingDateTimeText: record.bookingDateTimeText,
+      bookingTimeKnown: record.bookingTimeKnown,
+      recordDate: record.recordDate,
+      arrestingAgency: record.arrestingAgency,
+      sourceName: record.sourceName,
+      imageUrl: imageReference,
+    });
+    bookingCardImage = cards.fullPath;
+  } catch {
+    bookingCardImage = undefined;
+  }
 
   return (
     <main>
       <article className="content-card">
         <p className="eyebrow">PUBLIC BOOKING RECORD</p>
         <h1>{record.displayName}</h1>
-        <Mugshot src={imageReference} alt={`${record.displayName} booking image`} />
+        {bookingCardImage ? (
+          <div className="booking-report-card">
+            <Image
+              src={bookingCardImage}
+              alt={`${record.displayName} booking report card`}
+              width={1200}
+              height={1200}
+              sizes="(max-width: 800px) 100vw, 760px"
+              priority
+            />
+          </div>
+        ) : (
+          <Mugshot src={imageReference} alt={`${record.displayName} booking image`} />
+        )}
 
         <section className="booking-summary">
           <h2>Booking summary</h2>

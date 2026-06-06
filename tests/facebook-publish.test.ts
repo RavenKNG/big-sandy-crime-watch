@@ -51,4 +51,13 @@ describe("facebook publish helpers", () => {
 
     expect(resolved).toBe("https://bigsandycrimewatch.com/booking-images/example/mugshot.jpg");
   });
+
+  it("keeps generated booking card images uploadable", () => {
+    const resolved = resolveFacebookPhotoUploadUrl(
+      "/booking-images/example/booking-card-preview.png",
+      "https://bigsandycrimewatch.com",
+    );
+
+    expect(resolved).toBe("https://bigsandycrimewatch.com/booking-images/example/booking-card-preview.png");
+  });
 });
