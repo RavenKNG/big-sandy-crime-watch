@@ -95,13 +95,15 @@ function kspTagId(sourceSlug: string) {
 function wordpressDetailHtml(post: KspWordpressPost) {
   const title = post.title?.rendered ?? "Kentucky State Police update";
   const image = post._embedded?.["wp:featuredmedia"]?.[0]?.source_url;
+  const content = post.content?.rendered ?? "";
+  const excerpt = content.trim() ? "" : (post.excerpt?.rendered ?? "");
   return [
     "<article>",
     `<h1>${title}</h1>`,
     post.date ? `<time datetime="${post.date}"></time>` : "",
     post.modified ? `<p>Updated: ${post.modified}</p>` : "",
-    post.excerpt?.rendered ?? "",
-    post.content?.rendered ?? "",
+    excerpt,
+    content,
     image ? `<img src="${image}" />` : "",
     "</article>",
   ].join("\n");

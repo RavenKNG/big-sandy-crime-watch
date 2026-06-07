@@ -157,4 +157,9 @@ describe("KSP official news foundation", () => {
     expect(runner).toContain('envNum("KSP_SCAN_INTERVAL_MINUTES", 15)');
     expect(runner).toContain("officialNewsIntervalMs");
   });
+
+  it("uses WordPress excerpts only as fallback when live KSP content is missing", async () => {
+    const importer = await readFile("src/lib/official-news-import.ts", "utf8");
+    expect(importer).toContain('const excerpt = content.trim() ? ""');
+  });
 });
