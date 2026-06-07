@@ -3,6 +3,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { importApprovedFolder } from "../src/lib/approved-imports";
 import { repairMissingFacebookDrafts } from "../src/lib/facebook-draft-repair";
+import { runOfficialNewsImport } from "../src/lib/official-news-import";
 import { runOfficialSourceImport } from "../src/lib/official-source-import";
 import { verifyFacebookPageToken } from "../src/lib/facebook-token-health";
 import { getFacebookCredential, markFacebookPostResult, redactFacebookSecrets } from "../src/lib/facebook-connection";
@@ -407,6 +408,22 @@ async function runOnce(options: { skipFacebookPost?: boolean } = {}) {
   );
 }
 
+async function runOfficialNewsOnce() {
+  const result = await runOfficialNewsImport({ live: true });
+  console.log(
+    JSON.stringify(
+      {
+        ok: !("ok" in result) || result.ok,
+        ranAt: new Date().toISOString(),
+        officialNewsResult: result,
+      },
+      null,
+      2,
+    ),
+  );
+  return result;
+}
+
 async function main() {
   const once = process.argv.includes("--once");
 
@@ -418,8 +435,11 @@ async function main() {
 
   const intervalHours = envNum("POST_INTERVAL_HOURS", 3);
   const intervalMs = intervalHours * 60 * 60 * 1000;
+  const officialNewsIntervalMinutes = envNum("KSP_SCAN_INTERVAL_MINUTES", 15);
+  const officialNewsIntervalMs = officialNewsIntervalMinutes * 60 * 1000;
 
   await runOnce({ skipFacebookPost: envBool("AUTOMATION_SKIP_INITIAL_FACEBOOK_POST", false) });
+  await runOfficialNewsOnce();
 
   setInterval(() => {
     runOnce().catch((error) => {
@@ -436,6 +456,25 @@ async function main() {
       );
     });
   }, intervalMs);
+
+  setInterval(() => {
+    runOfficialNewsOnce().catch((error) => {
+      console.error(
+        JSON.stringify(
+          {
+            ok: false,
+            failedAt: new Date().toISOString(),
+            officialNewsResult: {
+              failed: true,
+              error: error instanceof Error ? error.message : String(error),
+            },
+          },
+          null,
+          2,
+        ),
+      );
+    });
+  }, officialNewsIntervalMs);
 }
 
 main().catch(async (error) => {

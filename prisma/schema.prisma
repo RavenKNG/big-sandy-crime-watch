@@ -57,11 +57,13 @@ model Article {
   sourceName String?
   sourceUrl String?
   sourcePublishedAt DateTime?
+  heroImageUrl String?
   publishedAt DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   facebookDrafts FacebookDraft[]
   corrections CorrectionRequest[]
+  officialNewsStories OfficialNewsStory[]
 }
 
 model PublicRecordDemo {
@@ -136,6 +138,102 @@ model FacebookDraft {
   errorMessage String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model OfficialNewsSource {
+  id String @id @default(cuid())
+  slug String @unique
+  name String
+  agency String
+  sourceType String
+  baseUrl String?
+  listUrl String
+  enabled Boolean @default(false)
+  autoPostEnabled Boolean @default(false)
+  scanIntervalMinutes Int @default(15)
+  attributionLabel String
+  region String?
+  parserKey String
+  lastScanAt DateTime?
+  lastSuccessAt DateTime?
+  lastErrorAt DateTime?
+  lastErrorMessage String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  stories OfficialNewsStory[]
+  logs OfficialNewsImportLog[]
+}
+
+model OfficialNewsStory {
+  id String @id @default(cuid())
+  sourceId String
+  source OfficialNewsSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  articleId String?
+  article Article? @relation(fields: [articleId], references: [id], onDelete: SetNull)
+  facebookDraftId String?
+  canonicalUrl String @unique
+  sourceUrl String
+  sourceName String
+  agency String
+  postLabel String?
+  title String
+  slug String
+  summary String?
+  generatedArticleBody String?
+  sourceTextHash String
+  publishedAt DateTime?
+  updatedSourceAt DateTime?
+  importedAt DateTime?
+  county String?
+  city String?
+  region String?
+  officialImageUrl String?
+  heroImageUrl String?
+  cardImageHorizontalUrl String?
+  cardImageVerticalUrl String?
+  importStatus String @default("DISCOVERED")
+  reviewStatus String @default("PENDING")
+  postStatus String @default("NOT_QUEUED")
+  errorMessage String?
+  metadata Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  assets OfficialNewsGeneratedAsset[]
+  logs OfficialNewsImportLog[]
+
+  @@index([sourceId, createdAt])
+  @@index([importStatus])
+  @@index([reviewStatus])
+}
+
+model OfficialNewsGeneratedAsset {
+  id String @id @default(cuid())
+  storyId String
+  story OfficialNewsStory @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  assetType String
+  publicUrl String
+  width Int
+  height Int
+  status String @default("READY")
+  errorMessage String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model OfficialNewsImportLog {
+  id String @id @default(cuid())
+  sourceId String?
+  source OfficialNewsSource? @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+  storyId String?
+  story OfficialNewsStory? @relation(fields: [storyId], references: [id], onDelete: SetNull)
+  level String
+  event String
+  message String
+  metadata Json?
+  createdAt DateTime @default(now())
+
+  @@index([sourceId, createdAt])
+  @@index([storyId, createdAt])
 }
 
 model CorrectionRequest {

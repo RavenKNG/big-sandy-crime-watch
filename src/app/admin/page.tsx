@@ -53,6 +53,7 @@ export default async function AdminPage() {
         <section className="admin-card"><h2>{failed}</h2><p>Failed Facebook drafts.</p></section>
         <section className="admin-card"><h2>{drafts}</h2><p>Editorial drafts awaiting review.</p><Link className="button" href="/admin/manual-entry">Create draft</Link></section>
         <section className="admin-card"><h2>{sponsorCount}</h2><p>Configured sponsor slots.</p><Link className="button" href="/admin/sponsors">Sponsor setup</Link></section>
+        <section className="admin-card"><h2>News</h2><p>KSP and future official-news review.</p><Link className="button" href="/admin/official-news">Official news</Link></section>
       </div>
 
       <section className="admin-card">

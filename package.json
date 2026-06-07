@@ -41,7 +41,10 @@
     "scheduler:start": "node --env-file=.env ./node_modules/tsx/dist/cli.mjs scripts/scheduler.ts",
     "automation:once": "node --env-file=.env ./node_modules/tsx/dist/cli.mjs scripts/automation-runner.ts --once",
     "automation:start": "node --env-file=.env ./node_modules/tsx/dist/cli.mjs scripts/automation-runner.ts",
-    "official-source:backfill": "node --env-file=.env ./node_modules/tsx/dist/cli.mjs scripts/official-source-backfill.ts"
+    "official-source:backfill": "node --env-file=.env ./node_modules/tsx/dist/cli.mjs scripts/official-source-backfill.ts",
+    "official-news:scan": "node --env-file-if-exists=.env ./node_modules/tsx/dist/cli.mjs scripts/official-news-scan.ts --dry-run",
+    "official-news:smoke": "node --env-file-if-exists=.env ./node_modules/tsx/dist/cli.mjs scripts/official-news-scan.ts --dry-run --live",
+    "ksp:scan": "node --env-file-if-exists=.env ./node_modules/tsx/dist/cli.mjs scripts/official-news-scan.ts --dry-run"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",
