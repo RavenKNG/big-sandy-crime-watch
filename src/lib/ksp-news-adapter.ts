@@ -139,7 +139,9 @@ export function parseKspNewsDetail(
       /<main[^>]*>([\s\S]*?)<\/main>/i,
     ]) ?? html;
   const articleBodyHtml = articleHtml.replace(/<h1[^>]*>[\s\S]*?<\/h1>/gi, " ");
-  const sourceText = normalizeWhitespace(stripHtml(`${description ?? ""} ${articleBodyHtml}`));
+  const bodyText = stripHtml(articleBodyHtml);
+  const descriptionText = description ? stripHtml(description) : "";
+  const sourceText = bodyText.length > 80 ? bodyText : normalizeWhitespace(`${descriptionText} ${bodyText}`);
   const postNumber = postNumberFromText(`${title} ${sourceText}`, fallbackPost);
   const officialImageUrl = image ? canonicalizeOfficialNewsUrl(image, KSP_BASE_URL) : undefined;
   const tags = [...html.matchAll(/(?:tag|category)["'][^>]*>\s*([^<]+)\s*</gi)].map((tag) => normalizeWhitespace(tag[1]));

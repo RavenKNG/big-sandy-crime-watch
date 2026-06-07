@@ -54,6 +54,13 @@ describe("KSP official news foundation", () => {
     expect(story.sourceTextHash).toHaveLength(64);
   });
 
+  it("does not join duplicate meta excerpts into KSP article source text", async () => {
+    const html = await readFile("fixtures/ksp/detail-with-image.html", "utf8");
+    const story = parseKspNewsDetail(html, source9, "/news/ksp-post-9-investigation-with-image");
+    const repeatedLead = "Kentucky State Police Post 9 responded to a reported incident in Pike County";
+    expect(story.sourceText.match(new RegExp(repeatedLead, "g"))).toHaveLength(1);
+  });
+
   it("creates an original attributed article without copying the full release as the body", async () => {
     const html = await readFile("fixtures/ksp/detail-with-image.html", "utf8");
     const story = parseKspNewsDetail(html, source9, "/news/ksp-post-9-investigation-with-image");
