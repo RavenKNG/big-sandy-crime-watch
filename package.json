@@ -33,6 +33,7 @@
     "status:automation": "node --env-file=.env ./node_modules/tsx/dist/cli.mjs scripts/status-automation.ts",
     "facebook:test-post": "node --env-file=.env ./node_modules/tsx/dist/cli.mjs scripts/facebook-test-post.ts",
     "facebook:queue-rowan-promo": "node --env-file=.env ./node_modules/tsx/dist/cli.mjs scripts/queue-rowan-promo.ts",
+    "facebook:repair-drafts": "node --env-file=.env ./node_modules/tsx/dist/cli.mjs scripts/repair-facebook-drafts.ts",
     "fb:refresh-captions": "node --env-file=.env ./node_modules/tsx/dist/cli.mjs scripts/refresh-facebook-captions.ts",
     "fb:roundup:dry-run": "node --env-file=.env ./node_modules/tsx/dist/cli.mjs scripts/facebook-roundup-dry-run.ts",
     "images:booking-card-samples": "node ./node_modules/tsx/dist/cli.mjs scripts/generate-booking-card-samples.ts",

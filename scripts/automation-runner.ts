@@ -2,11 +2,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { importApprovedFolder } from "../src/lib/approved-imports";
-import { generateBookingCardImages } from "../src/lib/booking-card-generator";
-import { absoluteSiteUrl } from "../src/lib/display-format";
-import { createFacebookRecordCaption } from "../src/lib/facebook-record-caption";
-import { facebookRecordUrl } from "../src/lib/facebook-links";
-import { publishedRecordOrder } from "../src/lib/record-display";
+import { repairMissingFacebookDrafts } from "../src/lib/facebook-draft-repair";
 import { runOfficialSourceImport } from "../src/lib/official-source-import";
 import { verifyFacebookPageToken } from "../src/lib/facebook-token-health";
 import { getFacebookCredential, markFacebookPostResult, redactFacebookSecrets } from "../src/lib/facebook-connection";
@@ -150,69 +146,11 @@ async function createFacebookDraftsForPublishedRecords() {
     };
   }
 
-  const siteUrl = (process.env.SITE_URL || "https://bigsandycrimewatch.com").replace(/\/$/, "");
-
-  const records = await prisma.publicRecordDemo.findMany({
-    where: {
-      publishStatus: "PUBLISHED",
-    },
-    include: {
-      charges: {
-        orderBy: {
-          displayOrder: "asc",
-        },
-      },
-    },
-    orderBy: publishedRecordOrder,
-    take: 50,
+  return repairMissingFacebookDrafts({
+    windowHours: envNum("FACEBOOK_DRAFT_REPAIR_WINDOW_HOURS", 72),
+    maxCreate: envNum("FACEBOOK_DRAFT_REPAIR_MAX_CREATE", 25),
+    dryRun: false,
   });
-
-  let created = 0;
-  let skipped = 0;
-
-  for (const record of records) {
-    const existing = await prisma.facebookDraft.findFirst({
-      where: {
-        recordId: record.id,
-      },
-    });
-
-    if (existing) {
-      skipped += 1;
-      continue;
-    }
-
-    const postUrl = facebookRecordUrl(record.slug, siteUrl);
-    const postText = createFacebookRecordCaption(record, postUrl);
-    const bookingCards = await generateBookingCardImages(record);
-
-    await prisma.facebookDraft.create({
-      data: {
-        recordId: record.id,
-        status: "DRAFTED",
-        scheduledFor: new Date(),
-        postText,
-        postUrl,
-        imageUrl: absoluteSiteUrl(bookingCards.previewPath, siteUrl),
-      },
-    });
-
-    await prisma.publicRecordDemo.update({
-      where: {
-        id: record.id,
-      },
-      data: {
-        facebookPostStatus: "DRAFTED",
-      },
-    });
-
-    created += 1;
-  }
-
-  return {
-    created,
-    skipped,
-  };
 }
 
 async function postNextFacebookDraft() {

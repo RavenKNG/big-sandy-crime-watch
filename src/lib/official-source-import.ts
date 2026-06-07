@@ -1,9 +1,6 @@
 import crypto from "node:crypto";
 import { getDb } from "./db";
-import { createFacebookRecordCaption } from "./facebook-record-caption";
-import { facebookRecordUrl } from "./facebook-links";
-import { generateBookingCardImages } from "./booking-card-generator";
-import { absoluteSiteUrl } from "./display-format";
+import { createFacebookRecordDraftPayload } from "./facebook-record-drafts";
 import {
   automaticOfficialSources,
   findOfficialSourceBySlug,
@@ -459,16 +456,13 @@ async function createFacebookDraft(record: {
     });
     return { created: false, id: existing.id };
   }
-  const postUrl = facebookRecordUrl(record.slug, process.env.SITE_URL);
-  const bookingCards = await generateBookingCardImages(record);
+  const draftPayload = await createFacebookRecordDraftPayload(record, process.env.SITE_URL);
   const draft = await db.facebookDraft.create({
     data: {
       recordId: record.id,
       status: "DRAFTED",
       scheduledFor: new Date(),
-      postText: createFacebookRecordCaption(record, postUrl),
-      postUrl,
-      imageUrl: absoluteSiteUrl(bookingCards.previewPath, process.env.SITE_URL),
+      ...draftPayload,
     },
   });
   await db.publicRecordDemo.update({

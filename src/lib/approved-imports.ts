@@ -2,11 +2,9 @@
 import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { createFacebookRecordCaption } from "./facebook-record-caption";
 import { todayBounds } from "./record-display";
 import { copyBookingImageFromFile } from "./booking-image-storage";
-import { generateBookingCardImages } from "./booking-card-generator";
-import { absoluteSiteUrl } from "./display-format";
+import { createFacebookRecordDraftPayload } from "./facebook-record-drafts";
 export type ReviewedCharge = {
   offense?: string;
   arrestCode?: string;
@@ -386,25 +384,7 @@ async function copyImageToPublic(recordSlug: string, imageInfo: ImageInfo | null
   return copyBookingImageFromFile(recordSlug, imageInfo.extension, imageInfo.absolutePath);
 }
 
-function makeFacebookPostText(record: ReviewedRecord, publicUrl: string): string {
-  return createFacebookRecordCaption(
-    {
-      displayName: record.fullName,
-      age: record.age,
-      recordDate: record.bookingDateTimeText ?? record.intakeDate,
-      arrestingAgency: record.arrestingAgency,
-      arrestingOfficer: record.arrestingOfficer,
-      charges: record.charges,
-    },
-    publicUrl,
-  );
-}
-
 async function createFacebookDraft(recordId: string, recordSlug: string, record: ReviewedRecord, imagePath?: string) {
-  const siteUrl = process.env.SITE_URL || "https://bigsandycrimewatch.com";
-  const postUrl = `${siteUrl.replace(/\/$/, "")}/records/${recordSlug}`;
-  const postText = makeFacebookPostText(record, postUrl);
-
   const existing = await prisma.facebookDraft.findFirst({
     where: {
       recordId,
@@ -413,27 +393,29 @@ async function createFacebookDraft(recordId: string, recordSlug: string, record:
 
   if (existing) return existing;
 
-  const bookingCards = await generateBookingCardImages({
-    slug: recordSlug,
-    displayName: record.fullName,
-    age: record.age,
-    bookingDateTimeText: record.bookingDateTimeText ?? record.intakeDate,
-    bookingTimeKnown: record.bookingTimeKnown,
-    recordDate: record.intakeDate,
-    arrestingAgency: record.arrestingAgency,
-    sourceName: record.sourceName,
-    imageUrl: imagePath ?? record.imageUrl,
-    imageLocalPath: imagePath ?? record.imageLocalPath,
-  });
+  const draftPayload = await createFacebookRecordDraftPayload(
+    {
+      slug: recordSlug,
+      displayName: record.fullName,
+      age: record.age,
+      bookingDateTimeText: record.bookingDateTimeText ?? record.intakeDate,
+      bookingTimeKnown: record.bookingTimeKnown,
+      recordDate: record.intakeDate,
+      arrestingAgency: record.arrestingAgency,
+      sourceName: record.sourceName,
+      imageUrl: imagePath ?? record.imageUrl,
+      imageLocalPath: imagePath ?? record.imageLocalPath,
+      charges: record.charges,
+    },
+    process.env.SITE_URL,
+  );
 
   return prisma.facebookDraft.create({
     data: {
       recordId,
       status: "DRAFTED",
       scheduledFor: new Date(),
-      postText,
-      postUrl,
-      imageUrl: absoluteSiteUrl(bookingCards.previewPath, process.env.SITE_URL),
+      ...draftPayload,
     },
   });
 }

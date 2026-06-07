@@ -1,4 +1,5 @@
 import { getDb } from "./db";
+import { getFacebookDraftGapSummary } from "./facebook-draft-repair";
 import { getRowanPromoStatus } from "./rowan-promo-runtime";
 
 type QueueCountRow = {
@@ -27,6 +28,7 @@ export async function getAutomationStatusSnapshot() {
     queueCounts,
     connection,
     rowanPromo,
+    publicDraftGaps,
   ] = await Promise.all([
     db.publicRecordDemo.findFirst({
       orderBy: { createdAt: "desc" },
@@ -112,6 +114,9 @@ export async function getAutomationStatusSnapshot() {
       nextEligibleAt: null,
       lastPostId: null,
     })),
+    getFacebookDraftGapSummary({
+      windowHours: Number.parseFloat(process.env.FACEBOOK_DRAFT_REPAIR_WINDOW_HOURS || "72"),
+    }),
   ]);
 
   const counts = queueCountMap(queueCounts);
@@ -133,6 +138,16 @@ export async function getAutomationStatusSnapshot() {
     warnings.push(`Facebook queue backlog is ${queueBacklog} while connection is unhealthy.`);
   }
   if (failedCount > 0) warnings.push(`${failedCount} Facebook draft${failedCount === 1 ? "" : "s"} failed.`);
+  if (publicDraftGaps.needsRepairCount > 0) {
+    warnings.push(
+      `${publicDraftGaps.needsRepairCount} published record${publicDraftGaps.needsRepairCount === 1 ? "" : "s"} from the last ${publicDraftGaps.windowHours} hours need Facebook draft/post coverage.`,
+    );
+  }
+  if (publicDraftGaps.failedOrManualDraftCount > 0) {
+    warnings.push(
+      `${publicDraftGaps.failedOrManualDraftCount} published record${publicDraftGaps.failedOrManualDraftCount === 1 ? "" : "s"} have failed/manual Facebook drafts that need review.`,
+    );
+  }
   if (postingEnabled && queueBacklog > 0 && hoursSincePost !== null) {
     if (hoursSincePost > expectedIntervalHours * 2) {
       warnings.push(`Facebook queue has ${queueBacklog} pending draft${queueBacklog === 1 ? "" : "s"} and no successful post in ${hoursSincePost.toFixed(1)} hours.`);
@@ -155,9 +170,19 @@ export async function getAutomationStatusSnapshot() {
       dueDraftCount,
       nextDueDraft,
       hoursSinceLastSuccessfulPost: hoursSincePost === null ? null : Number(hoursSincePost.toFixed(1)),
+      publicDraftGaps: {
+        windowHours: publicDraftGaps.windowHours,
+        publicRecordsChecked: publicDraftGaps.publicRecordsChecked,
+        missingDraftCount: publicDraftGaps.missingDraftCount,
+        invalidPostedCount: publicDraftGaps.invalidPostedCount,
+        failedOrManualDraftCount: publicDraftGaps.failedOrManualDraftCount,
+        needsRepairCount: publicDraftGaps.needsRepairCount,
+        autoCreateEligibleCount: publicDraftGaps.autoCreateEligibleCount,
+        samples: publicDraftGaps.samples,
+      },
       idleReason:
-        postingEnabled && queueBacklog === 0 && failedCount === 0
-          ? "No due Facebook drafts. The worker is healthy and will post the next new queued record."
+        postingEnabled && queueBacklog === 0 && failedCount === 0 && publicDraftGaps.needsRepairCount === 0
+          ? "No due Facebook drafts and no recent published records missing Facebook draft coverage."
           : null,
     },
     queueCounts: {

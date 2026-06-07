@@ -177,8 +177,20 @@ describe("official BSRDC public roster parser", () => {
   it("queues tagged public record URLs for future Facebook posts", async () => {
     const runner = await readFile("scripts/automation-runner.ts", "utf8");
     const source = await readFile("src/lib/official-source-import.ts", "utf8");
-    expect(runner).toContain("facebookRecordUrl(record.slug, siteUrl)");
-    expect(source).toContain("facebookRecordUrl(record.slug, process.env.SITE_URL)");
+    const draftHelper = await readFile("src/lib/facebook-record-drafts.ts", "utf8");
+    expect(runner).toContain("repairMissingFacebookDrafts");
+    expect(source).toContain("createFacebookRecordDraftPayload");
+    expect(draftHelper).toContain("facebookRecordUrl(record.slug, siteUrl)");
     expect(source).toContain('data: { facebookPostStatus: "DRAFTED" }');
+  });
+
+  it("self-heals missing Facebook drafts before posting", async () => {
+    const runner = await readFile("scripts/automation-runner.ts", "utf8");
+    const runOnce = runner.slice(runner.indexOf("async function runOnce("));
+    expect(runOnce.indexOf("createFacebookDraftsForPublishedRecords()")).toBeLessThan(
+      runOnce.indexOf("verifyFacebookPageToken()"),
+    );
+    expect(runner).toContain('envNum("FACEBOOK_DRAFT_REPAIR_WINDOW_HOURS", 72)');
+    expect(runner).toContain('envNum("FACEBOOK_DRAFT_REPAIR_MAX_CREATE", 25)');
   });
 });

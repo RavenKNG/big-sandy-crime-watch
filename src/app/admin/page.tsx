@@ -69,6 +69,10 @@ export default async function AdminPage() {
         <p>Status: {automation.facebookPostingState.idleReason ?? "Active monitoring"}</p>
         <p>Due Facebook drafts: {automation.facebookPostingState.dueDraftCount}</p>
         <p>Queue backlog: {automation.facebookPostingState.queueBacklog}</p>
+        <p>Recent public records checked for Facebook draft coverage: {automation.facebookPostingState.publicDraftGaps.publicRecordsChecked}</p>
+        <p>Missing Facebook drafts: {automation.facebookPostingState.publicDraftGaps.missingDraftCount}</p>
+        <p>Posted records missing a valid Facebook post ID: {automation.facebookPostingState.publicDraftGaps.invalidPostedCount}</p>
+        <p>Records needing Facebook repair: {automation.facebookPostingState.publicDraftGaps.needsRepairCount}</p>
         <p>Hours since last successful Facebook post: {automation.facebookPostingState.hoursSinceLastSuccessfulPost ?? "none"}</p>
         <p>Next queued post: {nextPost?.scheduledFor?.toISOString() ?? "none"}</p>
         <p>
