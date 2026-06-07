@@ -4,6 +4,7 @@ import {
   canonicalizeOfficialNewsUrl,
   createOfficialNewsArticleDraft,
   createOfficialNewsFacebookCaption,
+  normalizeOfficialNewsArticleText,
   officialNewsAutoPostEnabled,
   officialNewsDedupeKey,
 } from "../src/lib/official-news";
@@ -57,10 +58,37 @@ describe("KSP official news foundation", () => {
     const html = await readFile("fixtures/ksp/detail-with-image.html", "utf8");
     const story = parseKspNewsDetail(html, source9, "/news/ksp-post-9-investigation-with-image");
     const article = createOfficialNewsArticleDraft(story);
-    expect(article.body).toContain("Big Sandy Crime Watch summary:");
-    expect(article.body).toContain("Source: Kentucky State Police");
-    expect(article.body).toContain(story.canonicalUrl);
+    expect(article.sourceName).toBe("Kentucky State Police");
+    expect(article.body).not.toContain(story.canonicalUrl);
+    expect(article.sourceUrl).toBe(story.canonicalUrl);
     expect(article.body).not.toBe(story.sourceText);
+  });
+
+  it("normalizes KSP article text before saving", () => {
+    const sourceUrl = "https://kentuckystatepolice.ky.gov/news/example";
+    const paragraphs = normalizeOfficialNewsArticleText(
+      [
+        "According to Kentucky State Police, troopers responded to Floyd County &amp; opened an investigation. [&hellip;]",
+        "According to Kentucky State Police, troopers responded to Floyd County & opened an investigation.",
+        "Raw source: " + sourceUrl,
+        "KSP says additional details may be released as the investigation continues.",
+      ].join("\n\n"),
+    );
+    expect(paragraphs).toHaveLength(2);
+    expect(paragraphs[0]).toContain("& opened an investigation.");
+    expect(paragraphs.join(" ")).not.toContain("&hellip;");
+    expect(paragraphs.join(" ")).not.toContain("[");
+    expect(paragraphs.join(" ")).not.toContain(sourceUrl);
+    expect(paragraphs.join(" ")).not.toHaveLength(0);
+  });
+
+  it("keeps summary wording from being repeated in the article body", () => {
+    const summary = "Kentucky State Police says troopers responded to a reported assault in Floyd County.";
+    const paragraphs = normalizeOfficialNewsArticleText(
+      `${summary}\n${summary}\nAccording to Kentucky State Police, the investigation remains ongoing.`,
+      summary,
+    );
+    expect(paragraphs).toEqual(["According to Kentucky State Police, the investigation remains ongoing."]);
   });
 
   it("handles short KSP releases as brief notices", async () => {

@@ -104,20 +104,42 @@ export function normalizeWhitespace(value: string) {
   return value.replace(/\s+/g, " ").trim();
 }
 
+export function decodeHtmlEntities(value: string) {
+  const named: Record<string, string> = {
+    amp: "&",
+    quot: '"',
+    apos: "'",
+    nbsp: " ",
+    hellip: "...",
+    mdash: "-",
+    ndash: "-",
+    rsquo: "'",
+    lsquo: "'",
+    rdquo: '"',
+    ldquo: '"',
+  };
+  return value.replace(/&(#x?[0-9a-f]+|[a-z]+);/gi, (match, entity: string) => {
+    const key = entity.toLowerCase();
+    if (key.startsWith("#x")) {
+      const codePoint = Number.parseInt(key.slice(2), 16);
+      return Number.isFinite(codePoint) ? String.fromCodePoint(codePoint) : match;
+    }
+    if (key.startsWith("#")) {
+      const codePoint = Number.parseInt(key.slice(1), 10);
+      return Number.isFinite(codePoint) ? String.fromCodePoint(codePoint) : match;
+    }
+    return named[key] ?? match;
+  });
+}
+
 export function stripHtml(value: string) {
   return normalizeWhitespace(
-    value
-      .replace(/<script[\s\S]*?<\/script>/gi, " ")
-      .replace(/<style[\s\S]*?<\/style>/gi, " ")
-      .replace(/<[^>]+>/g, " ")
-      .replace(/&nbsp;/gi, " ")
-      .replace(/&amp;/gi, "&")
-      .replace(/&#39;/g, "'")
-      .replace(/&quot;/gi, '"')
-      .replace(/&mdash;/gi, "-")
-      .replace(/&ndash;/gi, "-")
-      .replace(/&#8211;/g, "-")
-      .replace(/&#8217;/g, "'"),
+    decodeHtmlEntities(
+      value
+        .replace(/<script[\s\S]*?<\/script>/gi, " ")
+        .replace(/<style[\s\S]*?<\/style>/gi, " ")
+        .replace(/<[^>]+>/g, " "),
+    ),
   );
 }
 
@@ -158,39 +180,71 @@ function splitSentences(value: string) {
     .filter((sentence) => sentence.length > 20);
 }
 
-function removeBoilerplate(value: string) {
-  return normalizeWhitespace(
-    value
-      .replace(/Updated:\s*\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\s*/gi, "")
-      .replace(/Kentucky State Police[, ]+Post\s+\d+\s*/gi, "Kentucky State Police ")
-      .replace(/Anyone with information[\s\S]*$/i, "")
-      .replace(/This is an ongoing investigation[\s\S]*$/i, "This is an ongoing investigation."),
-  );
+function paragraphKey(value: string) {
+  return normalizeWhitespace(value)
+    .toLowerCase()
+    .replace(/^according to kentucky state police,?\s*/i, "")
+    .replace(/^kentucky state police says?\s*/i, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function removeSourceUrls(value: string) {
+  return value.replace(/https?:\/\/\S+/gi, " ");
+}
+
+export function normalizeOfficialNewsArticleText(value: string, summary?: string) {
+  const withoutJunk = decodeHtmlEntities(value)
+    .replace(/\[(?:\s*(?:&hellip;|&#8230;|\.{3}|…)\s*)\]/gi, " ")
+    .replace(/\[\s*(?:read more|more|continue reading)[^\]]*\]/gi, " ")
+    .replace(/Updated:\s*\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\s*/gi, " ")
+    .replace(/Anyone with information[\s\S]*$/i, " ")
+    .replace(/This is an ongoing investigation[\s\S]*$/i, "This is an ongoing investigation.");
+  const summaryKey = summary ? paragraphKey(summary) : "";
+  const seen = new Set<string>();
+  const paragraphs = removeSourceUrls(withoutJunk)
+    .split(/\n+|(?<=\.)\s+(?=(?:According to Kentucky State Police|Kentucky State Police|KSP Post|Troopers|This story|Information))/i)
+    .map((paragraph) =>
+      normalizeWhitespace(
+        paragraph
+          .replace(/\s*\[\s*(?:\.{3}|…)\s*\]\s*/g, " ")
+          .replace(/\b(?:raw\s+source|source)\s*:\s*$/i, " ")
+          .replace(/\s+([,.;:!?])/g, "$1"),
+      ),
+    )
+    .filter((paragraph) => paragraph.length > 0)
+    .filter((paragraph) => !/^(?:raw\s+source|source)\s*:/i.test(paragraph));
+
+  const cleaned: string[] = [];
+  for (const paragraph of paragraphs) {
+    const key = paragraphKey(paragraph);
+    if (!key || key === summaryKey || seen.has(key)) continue;
+    seen.add(key);
+    cleaned.push(paragraph);
+  }
+  return cleaned;
 }
 
 export function createOfficialNewsArticleDraft(story: ParsedOfficialNewsStory): OfficialNewsArticleDraft {
-  const text = removeBoilerplate(story.sourceText);
+  const sourceParagraphs = normalizeOfficialNewsArticleText(story.sourceText);
+  const text = sourceParagraphs.join(" ");
   const sentences = splitSentences(text);
   const region = story.county ? `${story.county} County` : story.city ?? story.region ?? story.postLabel ?? "the region";
-  const firstFacts = sentences.slice(0, 4);
+  const firstFacts = sentences.slice(0, 5);
   const summarySentence =
     firstFacts[0] ??
     `Big Sandy Crime Watch is tracking a Kentucky State Police update involving ${region}.`;
   const summary = summarySentence.length > 280 ? `${summarySentence.slice(0, 277).trim()}...` : summarySentence;
+  const bodyParagraphs = normalizeOfficialNewsArticleText(sourceParagraphs.join("\n"), summary);
   const factParagraphs =
-    firstFacts.length > 0
-      ? firstFacts.map((sentence) => `According to Kentucky State Police, ${sentence.replace(/^According to Kentucky State Police,\s*/i, "")}`)
+    bodyParagraphs.length > 0
+      ? bodyParagraphs.slice(0, 6)
       : [`Big Sandy Crime Watch is tracking a Kentucky State Police update involving ${region}.`];
 
   const body = [
-    `Big Sandy Crime Watch summary:`,
-    "",
-    ...factParagraphs.slice(0, 5),
+    ...factParagraphs,
     "",
     `This story is based on information released by ${story.postLabel ?? "Kentucky State Police"}.`,
-    "",
-    `Source: Kentucky State Police`,
-    story.canonicalUrl,
     "",
     "Information is based on the official release available at the time of publication. Additional details may be released by Kentucky State Police.",
   ].join("\n");

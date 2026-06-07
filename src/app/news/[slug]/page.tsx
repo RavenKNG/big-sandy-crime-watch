@@ -33,30 +33,33 @@ export default async function NewsPage({ params }: { params: Promise<{ slug: str
         : new Date().toISOString();
 
   return (
-    <main>
-      <article className="content-card">
+    <main className="article-main">
+      <article className="content-card news-article">
         <p className="eyebrow">
           {article.category} - {formatDate(publishedAt)}
         </p>
         <h1>{article.title}</h1>
-        <p>{article.summary}</p>
+        <p className="article-lead">{article.summary}</p>
         {"heroImageUrl" in article && article.heroImageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img className="hero-image" src={article.heroImageUrl} alt="" />
         ) : null}
         <AdSlot placement="article-top" />
-        {article.body.split("\n").map((paragraph, index) =>
-          paragraph.trim() ? <p key={index}>{paragraph}</p> : null,
-        )}
-        <p className="muted">
-          Source: {article.sourceName}
+        <div className="article-body">
+          {article.body.split("\n").map((paragraph, index) =>
+            paragraph.trim() && !/^https?:\/\//i.test(paragraph.trim()) ? <p key={index}>{paragraph}</p> : null,
+          )}
+        </div>
+        <div className="source-box">
+          <p className="muted">Source: {article.sourceName ?? "Official release"}</p>
           {"sourceUrl" in article && article.sourceUrl ? (
-            <>
-              {" "}
-              <a href={article.sourceUrl}>Original release</a>
-            </>
+            <a className="secondary-button" href={article.sourceUrl} rel="noopener noreferrer" target="_blank">
+              {article.sourceName?.toLowerCase().includes("kentucky state police")
+                ? "View Original KSP Release"
+                : "View Original Release"}
+            </a>
           ) : null}
-        </p>
+        </div>
       </article>
     </main>
   );
