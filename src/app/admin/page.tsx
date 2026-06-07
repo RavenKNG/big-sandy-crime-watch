@@ -66,6 +66,10 @@ export default async function AdminPage() {
 
       <section className="admin-card">
         <h2>Automation snapshot</h2>
+        <p>Status: {automation.facebookPostingState.idleReason ?? "Active monitoring"}</p>
+        <p>Due Facebook drafts: {automation.facebookPostingState.dueDraftCount}</p>
+        <p>Queue backlog: {automation.facebookPostingState.queueBacklog}</p>
+        <p>Hours since last successful Facebook post: {automation.facebookPostingState.hoursSinceLastSuccessfulPost ?? "none"}</p>
         <p>Next queued post: {nextPost?.scheduledFor?.toISOString() ?? "none"}</p>
         <p>
           Recent Facebook post IDs: {recentPosts

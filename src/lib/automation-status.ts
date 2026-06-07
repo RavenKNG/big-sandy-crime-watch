@@ -22,6 +22,8 @@ export async function getAutomationStatusSnapshot() {
     latestPublishedRecord,
     latestDraft,
     latestPostedDraft,
+    dueDraftCount,
+    nextDueDraft,
     queueCounts,
     connection,
     rowanPromo,
@@ -66,6 +68,23 @@ export async function getAutomationStatusSnapshot() {
         postUrl: true,
       },
     }),
+    db.facebookDraft.count({
+      where: {
+        status: "DRAFTED",
+        scheduledFor: {
+          lte: new Date(),
+        },
+      },
+    }),
+    db.facebookDraft.findFirst({
+      where: { status: "DRAFTED" },
+      orderBy: { scheduledFor: "asc" },
+      select: {
+        id: true,
+        scheduledFor: true,
+        postUrl: true,
+      },
+    }),
     db.facebookDraft.groupBy({
       by: ["status"],
       _count: { _all: true },
@@ -100,6 +119,10 @@ export async function getAutomationStatusSnapshot() {
   const queueBacklog = (counts.DRAFTED ?? 0) + (counts.QUEUED ?? 0);
   const failedCount = counts.FAILED ?? 0;
   const warnings: string[] = [];
+  const hoursSincePost = connection?.lastSuccessfulPostAt
+    ? (Date.now() - connection.lastSuccessfulPostAt.getTime()) / (1000 * 60 * 60)
+    : null;
+  const expectedIntervalHours = Number.parseFloat(process.env.POST_INTERVAL_HOURS || "3");
 
   if (!postingEnabled) warnings.push("Facebook posting is disabled.");
   if (!connection) warnings.push("No stored Facebook connection row is present.");
@@ -110,12 +133,13 @@ export async function getAutomationStatusSnapshot() {
     warnings.push(`Facebook queue backlog is ${queueBacklog} while connection is unhealthy.`);
   }
   if (failedCount > 0) warnings.push(`${failedCount} Facebook draft${failedCount === 1 ? "" : "s"} failed.`);
-  if (postingEnabled && connection?.lastSuccessfulPostAt) {
-    const hoursSincePost = (Date.now() - connection.lastSuccessfulPostAt.getTime()) / (1000 * 60 * 60);
-    const expectedIntervalHours = Number.parseFloat(process.env.POST_INTERVAL_HOURS || "3");
+  if (postingEnabled && queueBacklog > 0 && hoursSincePost !== null) {
     if (hoursSincePost > expectedIntervalHours * 2) {
-      warnings.push(`No successful Facebook post in ${hoursSincePost.toFixed(1)} hours.`);
+      warnings.push(`Facebook queue has ${queueBacklog} pending draft${queueBacklog === 1 ? "" : "s"} and no successful post in ${hoursSincePost.toFixed(1)} hours.`);
     }
+  }
+  if (postingEnabled && queueBacklog > 0 && !connection?.lastSuccessfulPostAt) {
+    warnings.push(`Facebook queue has ${queueBacklog} pending draft${queueBacklog === 1 ? "" : "s"} but no successful post has been recorded.`);
   }
 
   return {
@@ -126,6 +150,16 @@ export async function getAutomationStatusSnapshot() {
     latestPublishedRecord,
     latestDraft,
     latestPostedDraft,
+    facebookPostingState: {
+      queueBacklog,
+      dueDraftCount,
+      nextDueDraft,
+      hoursSinceLastSuccessfulPost: hoursSincePost === null ? null : Number(hoursSincePost.toFixed(1)),
+      idleReason:
+        postingEnabled && queueBacklog === 0 && failedCount === 0
+          ? "No due Facebook drafts. The worker is healthy and will post the next new queued record."
+          : null,
+    },
     queueCounts: {
       drafted: counts.DRAFTED ?? 0,
       queued: counts.QUEUED ?? 0,

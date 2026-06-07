@@ -50,7 +50,7 @@ describe("booking card generator", () => {
       slug: "sample-card-record",
       displayName: "Example Long Hyphenated Person",
       age: 33,
-      bookingDateTimeText: "2026-06-05T12:30:00.000Z",
+      bookingDateTimeText: "2026-01-15T12:30:00.000Z",
       bookingTimeKnown: true,
       arrestingAgency: "Very Long Example Court Agency Name",
       imageUrl: mugshotPath,
@@ -69,7 +69,7 @@ describe("booking card generator", () => {
     const cards = await generateBookingCardImages({
       slug: "missing-mugshot-record",
       displayName: "No Image Person",
-      bookingDateTimeText: "06/05/2026",
+      bookingDateTimeText: "01/15/2026",
       bookingTimeKnown: false,
       sourceName: "Example Public Roster",
     });
