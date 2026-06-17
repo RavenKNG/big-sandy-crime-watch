@@ -23,6 +23,10 @@ export function bookingGeneratedImagePublicPath(
   return `${BOOKING_IMAGE_URL_PREFIX}${recordSlug}/booking-card-${kind}${extension}`;
 }
 
+export function dailyRecapAssetPublicPath(dayKey: string, filename: string) {
+  return `${BOOKING_IMAGE_URL_PREFIX}daily-recaps/${dayKey}/${filename}`;
+}
+
 export function bookingImageAbsolutePathFromPublicPath(publicPath: string) {
   if (!publicPath.startsWith(BOOKING_IMAGE_URL_PREFIX)) return undefined;
   const relativePath = publicPath.slice(BOOKING_IMAGE_URL_PREFIX.length);
@@ -45,6 +49,12 @@ export async function bookingImageExists(publicPath?: string | null) {
 
 export async function ensureBookingImageDirectory(recordSlug: string) {
   const directory = path.join(bookingImageStorageRoot(), recordSlug);
+  await fs.mkdir(directory, { recursive: true });
+  return directory;
+}
+
+export async function ensureDailyRecapDirectory(dayKey: string) {
+  const directory = path.join(bookingImageStorageRoot(), "daily-recaps", dayKey);
   await fs.mkdir(directory, { recursive: true });
   return directory;
 }
@@ -80,4 +90,11 @@ export async function writeBookingGeneratedImageFromBuffer(
   const destination = path.join(directory, `booking-card-${kind}.png`);
   await fs.writeFile(destination, bytes);
   return bookingGeneratedImagePublicPath(recordSlug, kind);
+}
+
+export async function writeDailyRecapAssetFromBuffer(dayKey: string, filename: string, bytes: Uint8Array) {
+  const directory = await ensureDailyRecapDirectory(dayKey);
+  const destination = path.join(directory, filename);
+  await fs.writeFile(destination, bytes);
+  return dailyRecapAssetPublicPath(dayKey, filename);
 }

@@ -1,71 +1,80 @@
+import fs from "node:fs/promises";
+import path from "node:path";
 import type { BookingCardRecord } from "../src/lib/booking-card-generator";
 import { generateBookingCardImages } from "../src/lib/booking-card-generator";
-import { getPublishedRecords } from "../src/lib/content";
 import { absoluteSiteUrl } from "../src/lib/display-format";
 import { bookingImageAbsolutePathFromPublicPath } from "../src/lib/booking-image-storage";
 
-async function loadDatabaseSamples(): Promise<BookingCardRecord[]> {
-  if (!process.env.DATABASE_URL) return [];
+const defaultOutputRoot = path.resolve("reports/daily-recap-review/latest/booking-card-samples");
+process.env.BOOKING_IMAGE_STORAGE_DIR = process.env.BOOKING_IMAGE_STORAGE_DIR || defaultOutputRoot;
 
-  try {
-    const { prisma } = await import("../src/lib/prisma-runtime");
-    const records = await prisma.publicRecordDemo.findMany({
-      where: { publishStatus: "PUBLISHED" },
-      orderBy: [{ imageLocalPath: "desc" }, { createdAt: "desc" }],
-      take: 3,
-      select: {
-        slug: true,
-        displayName: true,
-        age: true,
-        bookingDateTimeText: true,
-        bookingTimeKnown: true,
-        recordDate: true,
-        arrestingAgency: true,
-        sourceName: true,
-        imageUrl: true,
-        imageLocalPath: true,
-      },
-    });
-    await prisma.$disconnect();
-    return records;
-  } catch (error) {
-    console.warn(
-      JSON.stringify({
-        databaseSamplesLoaded: false,
-        reason: error instanceof Error ? error.message : String(error),
-      }),
-    );
-    return [];
-  }
-}
-
-function loadDemoSamples(): BookingCardRecord[] {
-  return getPublishedRecords()
-    .slice(0, 3)
-    .map((record) => ({
-      slug: record.slug,
-      displayName: record.displayName,
-      age: record.age,
-      bookingDateTimeText: record.bookingDateTimeText,
-      bookingTimeKnown: record.bookingTimeKnown,
-      recordDate: record.recordDate,
-      arrestingAgency: record.arrestingAgency,
-      sourceName: record.sourceName,
-      imageUrl: record.imageUrl,
-    }));
+function loadReviewSamples(): Array<BookingCardRecord & { sampleLabel: string }> {
+  return [
+    {
+      sampleLabel: "normal-name",
+      slug: "sample-normal-name",
+      displayName: "James E Ward",
+      age: 41,
+      bookingDateTimeText: "06/16/2026 00:00:00",
+      bookingTimeKnown: false,
+      arrestingAgency: "K.S.P",
+      sourceName: "Big Sandy Regional Detention Center Public Roster",
+    },
+    {
+      sampleLabel: "long-name",
+      slug: "sample-long-name",
+      displayName: "Christopher Alexander Montgomery",
+      age: null,
+      bookingDateTimeText: "06/16/2026 00:00:00",
+      bookingTimeKnown: false,
+      arrestingAgency: "Martin SO",
+      sourceName: "Big Sandy Regional Detention Center Public Roster",
+    },
+    {
+      sampleLabel: "long-agency",
+      slug: "sample-long-agency",
+      displayName: "Austin Oneil Harless",
+      age: 28,
+      bookingDateTimeText: "06/16/2026 00:00:00",
+      bookingTimeKnown: false,
+      arrestingAgency: "Big Sandy Regional Detention Center Transport Division",
+      sourceName: "Big Sandy Regional Detention Center Public Roster",
+    },
+    {
+      sampleLabel: "missing-agency-fallback",
+      slug: "sample-missing-agency",
+      displayName: "Jennifer Lee Workman",
+      age: null,
+      bookingDateTimeText: "06/16/2026 00:00:00",
+      bookingTimeKnown: false,
+      arrestingAgency: null,
+      sourceName: null,
+    },
+    {
+      sampleLabel: "missing-booked-fallback",
+      slug: "sample-missing-booked",
+      displayName: "Timothy A Mullett",
+      age: 35,
+      bookingDateTimeText: null,
+      bookingTimeKnown: false,
+      recordDate: null,
+      arrestingAgency: "MCSD",
+      sourceName: "Big Sandy Regional Detention Center Public Roster",
+    },
+  ];
 }
 
 async function main() {
-  const databaseSamples = await loadDatabaseSamples();
-  const samples = databaseSamples.length > 0 ? databaseSamples : loadDemoSamples();
+  const samples = loadReviewSamples();
 
   const output = [];
   for (const sample of samples) {
     const cards = await generateBookingCardImages(sample);
 
     output.push({
+      sampleLabel: sample.sampleLabel,
       slug: sample.slug,
-      source: databaseSamples.length > 0 ? "database" : "demo_fixture",
+      source: "daily_recap_booking_card_review_sample",
       previewPath: cards.previewPath,
       previewFile: bookingImageAbsolutePathFromPublicPath(cards.previewPath),
       previewUrl: absoluteSiteUrl(cards.previewPath),
@@ -75,7 +84,15 @@ async function main() {
     });
   }
 
-  console.log(JSON.stringify({ ok: true, samples: output }, null, 2));
+  const manifestPath = path.resolve("reports/daily-recap-review/latest/review-manifest.json");
+  const manifestText = await fs.readFile(manifestPath, "utf8").catch(() => null);
+  if (manifestText) {
+    const manifest = JSON.parse(manifestText) as Record<string, unknown>;
+    manifest.bookingCardSamples = output;
+    await fs.writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+  }
+
+  console.log(JSON.stringify({ ok: true, manifestPath: manifestText ? manifestPath : null, samples: output }, null, 2));
 }
 
 main().catch((error) => {

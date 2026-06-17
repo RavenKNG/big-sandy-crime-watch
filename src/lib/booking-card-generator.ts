@@ -85,6 +85,11 @@ function tspans(lines: string[], x: number, y: number, lineHeight: number) {
     .join("");
 }
 
+function fittedFontSize(lines: string[], baseSize: number, minSize: number, idealCharsPerLine: number) {
+  const longest = Math.max(...lines.map((line) => line.length), 1);
+  return Math.max(minSize, Math.min(baseSize, Math.floor(baseSize * (idealCharsPerLine / longest))));
+}
+
 function brandMark(x: number, y: number, size: number) {
   const cx = x + size / 2;
   const cy = y + size / 2;
@@ -196,7 +201,6 @@ function previewSvg(record: BookingCardRecord, source: Awaited<ReturnType<typeof
   const nameLines = splitName(record.displayName).slice(0, 4);
   const agency = uppercase(record.arrestingAgency ?? record.sourceName, "NOT LISTED");
   const booked = uppercase(displayCardDate(record), "DATE UNAVAILABLE");
-  const age = record.age ? String(record.age) : "N/A";
 
   return `
     <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
@@ -212,9 +216,8 @@ function previewSvg(record: BookingCardRecord, source: Awaited<ReturnType<typeof
       <text x="72" y="230" font-family="Arial Black, Impact, Arial, sans-serif" font-size="${nameLines.join("").length > 22 ? 40 : 48}" font-weight="900" fill="#f3f4f6" letter-spacing="1">
         ${tspans(nameLines, 72, 230, 50)}
       </text>
-      <text x="72" y="430" font-family="Arial Black, Impact, Arial, sans-serif" font-size="22" font-weight="900" fill="#e02430">AGE: <tspan fill="#f3f4f6">${escapeXml(age)}</tspan></text>
-      <text x="72" y="462" font-family="Arial Black, Impact, Arial, sans-serif" font-size="22" font-weight="900" fill="#e02430">BOOKED: <tspan fill="#f3f4f6">${escapeXml(booked)}</tspan></text>
-      <text x="72" y="494" font-family="Arial Black, Impact, Arial, sans-serif" font-size="21" font-weight="900" fill="#e02430">AGENCY: <tspan fill="#f3f4f6">${escapeXml(agency.length > 16 ? `${agency.slice(0, 15)}...` : agency)}</tspan></text>
+      <text x="72" y="436" font-family="Arial Black, Impact, Arial, sans-serif" font-size="23" font-weight="900" fill="#e02430">BOOKED: <tspan fill="#f3f4f6">${escapeXml(booked)}</tspan></text>
+      <text x="72" y="474" font-family="Arial Black, Impact, Arial, sans-serif" font-size="22" font-weight="900" fill="#e02430">AGENCY: <tspan fill="#f3f4f6">${escapeXml(agency.length > 24 ? `${agency.slice(0, 23)}...` : agency)}</tspan></text>
       <text x="72" y="536" font-family="Arial, sans-serif" font-size="17" font-weight="800" fill="#f3f4f6">VIEW FULL CHARGES &amp; DETAILS:</text>
       <rect x="72" y="548" width="350" height="31" fill="#a9151f"/>
       <text x="88" y="570" font-family="Arial Black, Impact, Arial, sans-serif" font-size="16" fill="#fff" letter-spacing="1.2">${SITE_LABEL}</text>
@@ -233,10 +236,12 @@ function previewSvg(record: BookingCardRecord, source: Awaited<ReturnType<typeof
 function fullSvg(record: BookingCardRecord, source: Awaited<ReturnType<typeof readSourceImage>>) {
   const agency = uppercase(record.arrestingAgency ?? record.sourceName, "NOT LISTED");
   const booked = uppercase(displayCardDate(record), "DATE UNAVAILABLE");
-  const age = record.age ? String(record.age) : "N/A";
-  const nameLines = wrapText(uppercase(record.displayName, "NAME UNAVAILABLE"), 18, 2);
-  const bookedLines = wrapText(booked, 15, 2);
-  const agencyLines = wrapText(agency, 17, 2);
+  const nameLines = wrapText(uppercase(record.displayName, "NAME UNAVAILABLE"), 24, 2);
+  const bookedLines = wrapText(booked, 18, 2);
+  const agencyLines = wrapText(agency, 24, 2);
+  const nameFontSize = fittedFontSize(nameLines, 30, 21, 22);
+  const bookedFontSize = fittedFontSize(bookedLines, 23, 18, 18);
+  const agencyFontSize = fittedFontSize(agencyLines, 24, 16, 22);
 
   return `
     <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1200" viewBox="0 0 1200 1200">
@@ -255,17 +260,14 @@ function fullSvg(record: BookingCardRecord, source: Awaited<ReturnType<typeof re
       </g>
       <rect x="42" y="188" width="1116" height="662" fill="none" stroke="#b71723" stroke-width="3"/>
       <rect x="42" y="850" width="1116" height="132" fill="#111216" stroke="#2a2b31"/>
-      <line x1="350" y1="850" x2="350" y2="982" stroke="#b71723" stroke-width="3"/>
-      <line x1="540" y1="850" x2="540" y2="982" stroke="#b71723" stroke-width="3"/>
-      <line x1="790" y1="850" x2="790" y2="982" stroke="#b71723" stroke-width="3"/>
+      <line x1="552" y1="850" x2="552" y2="982" stroke="#b71723" stroke-width="3"/>
+      <line x1="822" y1="850" x2="822" y2="982" stroke="#b71723" stroke-width="3"/>
       <text x="76" y="888" font-family="Arial Black, Impact, Arial, sans-serif" font-size="20" fill="#e02430">NAME:</text>
-      <text x="76" y="926" font-family="Arial Black, Impact, Arial, sans-serif" font-size="${nameLines.join("").length > 25 ? 22 : 26}" fill="#fff">${tspans(nameLines, 76, 926, 30)}</text>
-      <text x="380" y="888" font-family="Arial Black, Impact, Arial, sans-serif" font-size="20" fill="#e02430">AGE:</text>
-      <text x="380" y="934" font-family="Arial Black, Impact, Arial, sans-serif" font-size="42" fill="#fff">${escapeXml(age)}</text>
-      <text x="575" y="888" font-family="Arial Black, Impact, Arial, sans-serif" font-size="20" fill="#e02430">BOOKED:</text>
-      <text x="575" y="928" font-family="Arial Black, Impact, Arial, sans-serif" font-size="23" fill="#fff">${tspans(bookedLines, 575, 928, 28)}</text>
-      <text x="824" y="888" font-family="Arial Black, Impact, Arial, sans-serif" font-size="20" fill="#e02430">AGENCY:</text>
-      <text x="824" y="928" font-family="Arial Black, Impact, Arial, sans-serif" font-size="${agency.length > 18 ? 20 : 25}" fill="#fff">${tspans(agencyLines, 824, 928, 27)}</text>
+      <text x="76" y="926" font-family="Arial Black, Impact, Arial, sans-serif" font-size="${nameFontSize}" fill="#fff">${tspans(nameLines, 76, 926, 33)}</text>
+      <text x="586" y="888" font-family="Arial Black, Impact, Arial, sans-serif" font-size="20" fill="#e02430">BOOKED:</text>
+      <text x="586" y="928" font-family="Arial Black, Impact, Arial, sans-serif" font-size="${bookedFontSize}" fill="#fff">${tspans(bookedLines, 586, 928, 28)}</text>
+      <text x="856" y="888" font-family="Arial Black, Impact, Arial, sans-serif" font-size="20" fill="#e02430">AGENCY:</text>
+      <text x="856" y="928" font-family="Arial Black, Impact, Arial, sans-serif" font-size="${agencyFontSize}" fill="#fff">${tspans(agencyLines, 856, 928, 27)}</text>
       <rect x="42" y="982" width="1116" height="76" fill="url(#redBar)"/>
       <text x="600" y="1029" text-anchor="middle" font-family="Arial Black, Impact, Arial, sans-serif" font-size="24" fill="#fff" letter-spacing="1.2">VIEW FULL CHARGES &amp; DETAILS AT: ${SITE_LABEL}</text>
       <text x="600" y="1096" text-anchor="middle" font-family="Arial Black, Impact, Arial, sans-serif" font-size="18" fill="#fff" letter-spacing="1.5">ARREST DOES NOT IMPLY GUILT. ALL INDIVIDUALS ARE PRESUMED INNOCENT</text>

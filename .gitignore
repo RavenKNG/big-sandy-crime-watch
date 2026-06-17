@@ -21,6 +21,8 @@
 /build
 /work/
 /public/booking-images/
+/reports/daily-recap-review/
+/private/audio/
 
 # misc
 .DS_Store
