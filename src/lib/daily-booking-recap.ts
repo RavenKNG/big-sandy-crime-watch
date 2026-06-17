@@ -490,11 +490,13 @@ export function planDailyRecapTiming(batchSize: number, config = getDailyRecapCo
   const beatIntervalSeconds = Number((60 / config.audioBpm).toFixed(6));
   const cardBeatsPerRecord = cardBeatsForSize(batchSize);
   const hookBeats = Math.max(8, config.hookBeats);
-  let outroBeats = config.outroBeats;
-  let totalBeats = hookBeats + (batchSize > 0 ? FIRST_CARD_CLEAN_BEATS + Math.max(0, batchSize - 1) * cardBeatsPerRecord : 0) + outroBeats;
+  const outroBeats = config.outroBeats;
+  const cardBeats = Array.from({ length: batchSize }, (_, index) => index === 0 ? FIRST_CARD_CLEAN_BEATS : cardBeatsPerRecord);
+  let totalBeats = hookBeats + cardBeats.reduce((sum, beats) => sum + beats, 0) + outroBeats;
   while (totalBeats * beatIntervalSeconds < config.minDurationSeconds) {
     totalBeats += 1;
-    outroBeats += 1;
+    if (cardBeats.length > 1) cardBeats[cardBeats.length - 1] += 1;
+    else if (cardBeats.length === 1) cardBeats[0] += 1;
   }
 
   const slideTimings: DailyRecapSlidePlan[] = [];
@@ -511,7 +513,7 @@ export function planDailyRecapTiming(batchSize: number, config = getDailyRecapCo
   push("hook", "2", 2);
   push("hook", "1", hookBeats - 6);
   for (let index = 0; index < batchSize; index += 1) {
-    push("card", `BOOKING CARD ${index + 1} OF ${batchSize}`, index === 0 ? FIRST_CARD_CLEAN_BEATS : cardBeatsPerRecord);
+    push("card", `BOOKING CARD ${index + 1} OF ${batchSize}`, cardBeats[index] ?? cardBeatsPerRecord);
   }
   push("outro", "FULL DETAILS POSTED NOW / BIGSANDYCRIMEWATCH.COM", outroBeats);
 
