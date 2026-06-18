@@ -5,7 +5,7 @@ import { spawn } from "node:child_process";
 import ffmpegPath from "ffmpeg-static";
 import sharp from "sharp";
 import { getDb } from "./db";
-import { ensureBookingCardImages } from "./booking-card-generator";
+import { generateBookingCardImages } from "./booking-card-generator";
 import {
   bookingImageAbsolutePathFromPublicPath,
   dailyRecapAssetPublicPath,
@@ -656,13 +656,12 @@ export async function buildDailyBookingRecapReels(options: {
     const videoSlideFiles: string[] = [];
     const videoSlideDurations: number[] = [];
     const selected = [];
-    const firstCards = await ensureBookingCardImages(batch[0]);
     const cardSlideFiles: string[] = [];
     const cardSlidePaths: string[] = [];
 
     for (let index = 0; index < batch.length; index += 1) {
       const record = batch[index];
-      const cards = index === 0 ? firstCards : await ensureBookingCardImages(record);
+      const cards = await generateBookingCardImages(record);
       const photo = await resolveBookingPhoto(record);
       const slide = await createRecapCardSlide(cards.fullPath, record.displayName);
       const slideName = `part-${batchNumber}-card-${String(index + 1).padStart(2, "0")}.png`;
