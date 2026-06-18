@@ -6,12 +6,14 @@ import { repairMissingFacebookDrafts } from "../src/lib/facebook-draft-repair";
 import { runOfficialNewsImport } from "../src/lib/official-news-import";
 import { runOfficialSourceImport } from "../src/lib/official-source-import";
 import { verifyFacebookPageToken } from "../src/lib/facebook-token-health";
+import { runDailyBookingRecapAutomation } from "../src/lib/daily-booking-recap";
 import { getFacebookCredential, markFacebookPostResult, redactFacebookSecrets } from "../src/lib/facebook-connection";
 import {
   createFacebookFeedPostForm,
   createFacebookPhotoUploadForm,
   resolveFacebookPhotoUploadUrl,
 } from "../src/lib/facebook-publish";
+import { publishDailyRecapFacebookReel } from "../src/lib/facebook-reels";
 import { queueRowanPromoDraft } from "../src/lib/rowan-promo-runtime";
 
 const ROOT = process.cwd();
@@ -380,6 +382,20 @@ async function runOnce(options: { skipFacebookPost?: boolean } = {}) {
   const draftResults = await createFacebookDraftsForPublishedRecords();
   const facebookTokenHealth = await verifyFacebookPageToken();
   const rowanPromoResult = await queueRowanPromoDraft();
+  const dailyRecapResult = !facebookTokenHealth.healthy
+    ? {
+        skipped: true,
+        reason: "Facebook Page token health check failed; Daily Recap Reel queue preserved.",
+        actionRequired: facebookTokenHealth.actionRequired,
+      }
+    : await runDailyBookingRecapAutomation({
+        publishReel: async ({ caption, videoFile }) =>
+          publishDailyRecapFacebookReel({
+            description: caption,
+            title: "Big Sandy Crime Watch Daily Booking Recap",
+            videoFile,
+          }),
+      });
   const facebookPostResult = options.skipFacebookPost
     ? { skipped: true, reason: "Startup post skipped; waiting for the configured interval." }
     : !facebookTokenHealth.healthy
@@ -400,6 +416,7 @@ async function runOnce(options: { skipFacebookPost?: boolean } = {}) {
         draftResults,
         facebookTokenHealth,
         rowanPromoResult,
+        dailyRecapResult,
         facebookPostResult,
       },
       null,
@@ -482,4 +499,3 @@ main().catch(async (error) => {
   await prisma.$disconnect();
   process.exit(1);
 });
-
