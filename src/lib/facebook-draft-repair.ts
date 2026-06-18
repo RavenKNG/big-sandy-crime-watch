@@ -244,17 +244,18 @@ export async function repairMissingFacebookDrafts(
 
     const scheduledFor = new Date(now.getTime() + created.length * intervalMs);
     const draftPayload = await createFacebookRecordDraftPayload(item.record, process.env.SITE_URL);
+    const draftStatus = draftPayload.imageUrl ? "DRAFTED" : "MANUAL_REQUIRED";
     const draft = await db.facebookDraft.create({
       data: {
         recordId: item.record.id,
-        status: "DRAFTED",
+        status: draftStatus,
         scheduledFor,
         ...draftPayload,
       },
     });
     await db.publicRecordDemo.update({
       where: { id: item.record.id },
-      data: { facebookPostStatus: "DRAFTED" },
+      data: { facebookPostStatus: draftStatus },
     });
     created.push({
       recordId: item.record.id,

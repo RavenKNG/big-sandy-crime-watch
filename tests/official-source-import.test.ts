@@ -7,11 +7,12 @@ import {
   runOfficialSourceImport,
   type VendorRosterRow,
 } from "../src/lib/official-source-import";
-import { findOfficialSourceBySlug } from "../src/lib/official-sources";
+import { findOfficialSourceBySlug, officialSourceApiHeaders } from "../src/lib/official-sources";
 
 describe("official BSRDC public roster parser", () => {
   afterEach(() => {
     delete process.env.OFFICIAL_SOURCE_FETCH_ENABLED;
+    delete process.env.OFFICIAL_SOURCE_API_KEY;
     delete process.env.AUTO_IMPORT_OFFICIAL_RECORDS;
     delete process.env.AUTO_PUBLISH_VALID_IMPORTED_RECORDS;
   });
@@ -105,6 +106,20 @@ describe("official BSRDC public roster parser", () => {
     });
   });
 
+  it("sends the vendor API key header when configured", () => {
+    process.env.OFFICIAL_SOURCE_API_KEY = "test-key";
+    expect(officialSourceApiHeaders()).toEqual({
+      "Content-Type": "application/json",
+      "X-API-KEY": "test-key",
+    });
+  });
+
+  it("omits the vendor API key header when not configured", () => {
+    expect(officialSourceApiHeaders()).toEqual({
+      "Content-Type": "application/json",
+    });
+  });
+
   it("runs official import before Facebook posting in the worker cycle", async () => {
     const runner = await readFile("scripts/automation-runner.ts", "utf8");
     const runOnce = runner.slice(runner.indexOf("async function runOnce("));
@@ -143,12 +158,12 @@ describe("official BSRDC public roster parser", () => {
     expect(publishHelpers).not.toContain("targeting");
   });
 
-  it("falls back to a feed post when Facebook rejects reading an uploaded image file", async () => {
+  it("blocks link-only fallback for booking posts when Facebook rejects a mugshot upload", async () => {
     const runner = await readFile("scripts/automation-runner.ts", "utf8");
     expect(runner).toContain("graphError.error?.error_subcode === 1366046");
     expect(runner).toContain("graphError.error?.error_subcode === 2069019");
-    expect(runner).toContain('https://graph.facebook.com/v25.0/${pageId}/feed');
-    expect(runner).toContain("fallbackToFeed: true");
+    expect(runner).toContain("link-only fallback blocked");
+    expect(runner).toContain("failedImageRead && !draft.recordId");
   });
 
   it("keeps expired-token Facebook drafts retryable for the next interval", async () => {
@@ -181,7 +196,7 @@ describe("official BSRDC public roster parser", () => {
     expect(runner).toContain("repairMissingFacebookDrafts");
     expect(source).toContain("createFacebookRecordDraftPayload");
     expect(draftHelper).toContain("facebookRecordUrl(record.slug, siteUrl)");
-    expect(source).toContain('data: { facebookPostStatus: "DRAFTED" }');
+    expect(source).toContain('data: { facebookPostStatus: draftStatus }');
   });
 
   it("self-heals missing Facebook drafts before posting", async () => {

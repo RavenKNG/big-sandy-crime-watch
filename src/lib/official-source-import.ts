@@ -4,6 +4,7 @@ import { createFacebookRecordDraftPayload } from "./facebook-record-drafts";
 import {
   automaticOfficialSources,
   findOfficialSourceBySlug,
+  officialSourceApiHeaders,
   officialSourceApiRoot,
   officialSourceRosterUrl,
   type OfficialSourceConfig,
@@ -316,7 +317,7 @@ async function fetchPublicRosterApi(source: OfficialSourceConfig, fromDate: stri
     `${officialSourceApiRoot()}/${source.agencyCode}/search-offenders`,
     {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: officialSourceApiHeaders(),
       body: JSON.stringify({
         recaptchaToken: "",
         agencyCode: source.agencyCode,
@@ -358,7 +359,7 @@ async function fetchJailTrackerCaptchaSource(source: OfficialSourceConfig): Prom
     `https://omsweb.public-safety-cloud.com/jtclientweb/Offender/${source.routeSlug}`,
     {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: officialSourceApiHeaders(),
       body: JSON.stringify({
         captchaKey: null,
         captchaImage: null,
@@ -417,7 +418,7 @@ async function persistImage(source: OfficialSourceConfig, slug: string, imageId?
     `${officialSourceApiRoot()}/${source.agencyCode}/get-sas-image-url/${encodeURIComponent(imageId)}`,
     {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: officialSourceApiHeaders(),
       body: JSON.stringify({ recaptchaToken: null }),
     },
   );
@@ -457,17 +458,18 @@ async function createFacebookDraft(record: {
     return { created: false, id: existing.id };
   }
   const draftPayload = await createFacebookRecordDraftPayload(record, process.env.SITE_URL);
+  const draftStatus = draftPayload.imageUrl ? "DRAFTED" : "MANUAL_REQUIRED";
   const draft = await db.facebookDraft.create({
     data: {
       recordId: record.id,
-      status: "DRAFTED",
+      status: draftStatus,
       scheduledFor: new Date(),
       ...draftPayload,
     },
   });
   await db.publicRecordDemo.update({
     where: { id: record.id },
-    data: { facebookPostStatus: "DRAFTED" },
+    data: { facebookPostStatus: draftStatus },
   });
   return { created: true, id: draft.id };
 }

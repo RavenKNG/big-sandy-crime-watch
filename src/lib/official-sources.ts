@@ -60,7 +60,13 @@ export function officialSourceApiRoot() {
   return process.env.OFFICIAL_SOURCE_API_URL || "https://omsweb.public-safety-cloud.com/publicroster-api/api";
 }
 
+export function officialSourceApiHeaders() {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const apiKey = process.env.OFFICIAL_SOURCE_API_KEY?.trim();
+  if (apiKey) headers["X-API-KEY"] = apiKey;
+  return headers;
+}
+
 export function automaticOfficialSources() {
   return officialSources.filter((source) => source.automationEnabled);
 }
-

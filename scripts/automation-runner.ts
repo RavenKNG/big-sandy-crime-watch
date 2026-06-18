@@ -196,6 +196,36 @@ async function postNextFacebookDraft() {
 
   const siteUrl = (process.env.SITE_URL || "https://bigsandycrimewatch.com").replace(/\/$/, "");
   const imageUrl = resolveFacebookPhotoUploadUrl(draft.imageUrl, siteUrl);
+  if (draft.recordId && !imageUrl) {
+    await prisma.facebookDraft.update({
+      where: {
+        id: draft.id,
+      },
+      data: {
+        status: "MANUAL_REQUIRED",
+        errorMessage: JSON.stringify({
+          warning: "Booking Facebook draft was held because no uploadable mugshot image was available.",
+          draftImageUrl: draft.imageUrl,
+        }),
+      },
+    });
+    await prisma.publicRecordDemo.update({
+      where: {
+        id: draft.recordId,
+      },
+      data: {
+        facebookPostStatus: "MANUAL_REQUIRED",
+      },
+    });
+
+    return {
+      posted: false,
+      skipped: true,
+      manualRequired: true,
+      reason: "Booking draft missing uploadable mugshot image; not posting link-only.",
+      draftId: draft.id,
+    };
+  }
   const createFeedLinkPost = async () =>
     fetch(`https://graph.facebook.com/v25.0/${pageId}/feed`, {
       method: "POST",
@@ -224,6 +254,29 @@ async function postNextFacebookDraft() {
 
         const uploadJson = await uploadResponse.json();
         if (!uploadResponse.ok) {
+          if (draft.recordId) {
+            const redactedJson = redactFacebookSecrets(uploadJson);
+            await prisma.facebookDraft.update({
+              where: {
+                id: draft.id,
+              },
+              data: {
+                status: "MANUAL_REQUIRED",
+                errorMessage: JSON.stringify({
+                  warning: "Booking Facebook draft image upload failed; link-only fallback blocked.",
+                  error: redactedJson,
+                }),
+              },
+            });
+            await prisma.publicRecordDemo.update({
+              where: {
+                id: draft.recordId,
+              },
+              data: {
+                facebookPostStatus: "MANUAL_REQUIRED",
+              },
+            });
+          }
           return {
             response: uploadResponse,
             json: uploadJson,
@@ -239,6 +292,28 @@ async function postNextFacebookDraft() {
               : null;
 
         if (!photoId) {
+          if (draft.recordId) {
+            await prisma.facebookDraft.update({
+              where: {
+                id: draft.id,
+              },
+              data: {
+                status: "MANUAL_REQUIRED",
+                errorMessage: JSON.stringify({
+                  warning: "Facebook photo upload did not return a usable media id; link-only fallback blocked.",
+                  uploadResponse: redactFacebookSecrets(uploadJson),
+                }),
+              },
+            });
+            await prisma.publicRecordDemo.update({
+              where: {
+                id: draft.recordId,
+              },
+              data: {
+                facebookPostStatus: "MANUAL_REQUIRED",
+              },
+            });
+          }
           return {
             response: uploadResponse,
             json: {
@@ -280,13 +355,22 @@ async function postNextFacebookDraft() {
   if (!response.response.ok) {
     const redactedJson = redactFacebookSecrets(responseJson);
     const graphError = responseJson as { error?: { code?: number; error_subcode?: number; message?: string } };
+    if (draft.recordId && response.usedPhotoUpload) {
+      return {
+        posted: false,
+        failed: true,
+        manualRequired: true,
+        error: JSON.stringify(redactedJson),
+        draftId: draft.id,
+      };
+    }
     const failedImageRead =
       imageUrl &&
       ((graphError.error?.code === 100 && graphError.error?.error_subcode === 1366046) ||
         (graphError.error?.code === 324 && graphError.error?.error_subcode === 2069019) ||
         graphError.error?.message?.includes("usable media id"));
 
-    if (failedImageRead) {
+    if (failedImageRead && !draft.recordId) {
       const fallbackResponse = await createFeedLinkPost();
 
       const fallbackJson = await fallbackResponse.json();

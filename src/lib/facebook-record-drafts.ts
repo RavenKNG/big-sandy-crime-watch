@@ -1,11 +1,11 @@
 import type { BookingCardRecord } from "./booking-card-generator";
-import { generateBookingCardImages } from "./booking-card-generator";
 import { absoluteSiteUrl } from "./display-format";
 import {
   createFacebookRecordCaption,
   type FacebookRecordCaption,
 } from "./facebook-record-caption";
 import { facebookRecordUrl } from "./facebook-links";
+import { resolveBookingPhoto } from "./booking-photo";
 
 export type FacebookRecordDraftRecord = BookingCardRecord &
   FacebookRecordCaption & {
@@ -20,23 +20,25 @@ export async function createFacebookRecordDraftPayload(
   const postUrl = facebookRecordUrl(record.slug, siteUrl);
   const postText = createFacebookRecordCaption(record, postUrl);
 
-  try {
-    const bookingCards = await generateBookingCardImages(record);
+  const photo = await resolveBookingPhoto(record);
+  if (photo.status === "available" && photo.imagePathOrUrl) {
     return {
       postText,
       postUrl,
-      imageUrl: absoluteSiteUrl(bookingCards.previewPath, siteUrl),
+      imageUrl: absoluteSiteUrl(photo.imagePathOrUrl, siteUrl),
       errorMessage: null as string | null,
     };
-  } catch (error) {
-    return {
-      postText,
-      postUrl,
-      imageUrl: null,
-      errorMessage: JSON.stringify({
-        warning: "Booking card generation failed; draft was created as a link-only fallback.",
-        error: error instanceof Error ? error.message : String(error),
-      }),
-    };
   }
+
+  return {
+    postText,
+    postUrl,
+    imageUrl: null,
+    errorMessage: JSON.stringify({
+      warning: "Booking record has no confirmed mugshot; Facebook posting held for manual repair.",
+      photoStatus: photo.status,
+      reason: photo.reason,
+      checkedSource: photo.checkedSource,
+    }),
+  };
 }

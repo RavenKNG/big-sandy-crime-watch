@@ -3,7 +3,7 @@ import {
   bookingImageExists,
   writeBookingImageFromBuffer,
 } from "../src/lib/booking-image-storage";
-import { officialSourceApiRoot, officialSources } from "../src/lib/official-sources";
+import { officialSourceApiHeaders, officialSourceApiRoot, officialSources } from "../src/lib/official-sources";
 
 type VendorRosterRow = {
   id?: number | string;
@@ -36,7 +36,7 @@ async function searchOffenders(agencyCode: string, fromDate: string, toDate: str
     `${officialSourceApiRoot()}/${agencyCode}/search-offenders`,
     {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: officialSourceApiHeaders(),
       body: JSON.stringify({
         recaptchaToken: "",
         agencyCode,
@@ -67,7 +67,7 @@ async function fetchImagePath(agencyCode: string, imageId: string, slug: string)
     `${officialSourceApiRoot()}/${agencyCode}/get-sas-image-url/${encodeURIComponent(imageId)}`,
     {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: officialSourceApiHeaders(),
       body: JSON.stringify({ recaptchaToken: null }),
     },
   );
@@ -117,7 +117,6 @@ async function main() {
     where: {
       publishStatus: "PUBLISHED",
       sourceName: source.sourceName,
-      OR: [{ imageUrl: { not: null } }, { imageLocalPath: { not: null } }],
     },
     select: {
       id: true,
@@ -133,7 +132,7 @@ async function main() {
   const missing = [];
   for (const record of records) {
     const imageReference = record.imageUrl ?? record.imageLocalPath;
-    if (!(await bookingImageExists(imageReference))) {
+    if (!imageReference || !(await bookingImageExists(imageReference))) {
       missing.push(record);
     }
   }

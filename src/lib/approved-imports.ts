@@ -1,4 +1,5 @@
 ﻿import { prisma } from "./prisma-runtime";
+import type { FacebookStatus } from "@prisma/client";
 import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -410,10 +411,11 @@ async function createFacebookDraft(recordId: string, recordSlug: string, record:
     process.env.SITE_URL,
   );
 
+  const draftStatus = draftPayload.imageUrl ? "DRAFTED" : "MANUAL_REQUIRED";
   return prisma.facebookDraft.create({
     data: {
       recordId,
-      status: "DRAFTED",
+      status: draftStatus,
       scheduledFor: new Date(),
       ...draftPayload,
     },
@@ -478,7 +480,7 @@ export async function importApprovedFolder(options: ImportOptions) {
   }
 
   const publishStatus = options.autoPublish ? "PUBLISHED" : "DRAFT";
-  const facebookPostStatus =
+  let facebookPostStatus: FacebookStatus =
     options.createFacebookDraft && options.autoPublish ? "DRAFTED" : "NOT_QUEUED";
 
   const created = await prisma.publicRecordDemo.create({
@@ -532,6 +534,11 @@ export async function importApprovedFolder(options: ImportOptions) {
   if (options.createFacebookDraft && options.autoPublish) {
     const draft = await createFacebookDraft(created.id, created.slug, record, copiedImagePath);
     facebookDraftId = draft.id;
+    facebookPostStatus = draft.status;
+    await prisma.publicRecordDemo.update({
+      where: { id: created.id },
+      data: { facebookPostStatus: draft.status },
+    });
   }
 
   return {
