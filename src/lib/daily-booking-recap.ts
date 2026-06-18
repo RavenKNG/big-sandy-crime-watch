@@ -38,6 +38,7 @@ export type DailyRecapEligibleRecord = {
   imageUrl: string | null;
   imageLocalPath: string | null;
   complianceNotes: string | null;
+  viewCount: number;
   facebookDraftUpdatedAt: Date;
 };
 
@@ -421,6 +422,7 @@ async function findEligiblePostedRecords(dayKey: string, config: DailyRecapConfi
           imageUrl: true,
           imageLocalPath: true,
           complianceNotes: true,
+          viewCount: true,
           publishStatus: true,
         },
       },
@@ -452,10 +454,20 @@ async function findEligiblePostedRecords(dayKey: string, config: DailyRecapConfi
       imageUrl: photo.status === "available" ? photo.imagePathOrUrl : null,
       imageLocalPath: photo.status === "available" ? photo.imagePathOrUrl : null,
       complianceNotes: draft.record.complianceNotes,
+      viewCount: draft.record.viewCount,
       facebookDraftUpdatedAt: draft.updatedAt,
     });
   }
-  return [...deduped.values()].sort((a, b) => a.facebookDraftUpdatedAt.getTime() - b.facebookDraftUpdatedAt.getTime()).slice(0, config.maxRecords);
+  return orderDailyRecapRecords([...deduped.values()]).slice(0, config.maxRecords);
+}
+
+export function orderDailyRecapRecords(records: DailyRecapEligibleRecord[]) {
+  return [...records].sort((a, b) => {
+    const photoRank = Number(Boolean(b.imageUrl || b.imageLocalPath)) - Number(Boolean(a.imageUrl || a.imageLocalPath));
+    if (photoRank !== 0) return photoRank;
+    if (b.viewCount !== a.viewCount) return b.viewCount - a.viewCount;
+    return a.facebookDraftUpdatedAt.getTime() - b.facebookDraftUpdatedAt.getTime();
+  });
 }
 
 export function splitDailyRecapRecords(records: DailyRecapEligibleRecord[], config = getDailyRecapConfig()) {

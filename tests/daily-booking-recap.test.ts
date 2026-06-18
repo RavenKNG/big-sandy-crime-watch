@@ -9,6 +9,7 @@ import {
   createDailyBookingRecapCaption,
   dayKeyInTimeZone,
   getDailyRecapConfig,
+  orderDailyRecapRecords,
   planDailyRecapTiming,
   splitDailyRecapRecords,
   type DailyRecapEligibleRecord,
@@ -42,6 +43,7 @@ async function record(index: number, withPhoto = true): Promise<DailyRecapEligib
     imageUrl: imagePath,
     imageLocalPath: imagePath,
     complianceNotes: null,
+    viewCount: index,
     facebookDraftUpdatedAt: new Date(`2026-06-08T1${index % 10}:00:00.000Z`),
   };
 }
@@ -138,4 +140,13 @@ describe("daily booking recap", () => {
     if (!result.ok) throw new Error("Expected recap build");
     expect(result.reels.map((reel) => reel.recordCount)).toEqual([7, 6]);
   }, 40000);
+
+  it("orders available mugshots before unavailable cards and then by popularity", async () => {
+    const unavailable = { ...(await record(1, false)), displayName: "No Photo", viewCount: 999 };
+    const lessPopularPhoto = { ...(await record(2, true)), displayName: "Photo Low", viewCount: 10 };
+    const morePopularPhoto = { ...(await record(3, true)), displayName: "Photo High", viewCount: 50 };
+
+    expect(orderDailyRecapRecords([unavailable, lessPopularPhoto, morePopularPhoto]).map((item) => item.displayName))
+      .toEqual(["Photo High", "Photo Low", "No Photo"]);
+  });
 });

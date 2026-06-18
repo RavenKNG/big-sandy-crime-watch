@@ -42,6 +42,7 @@ const lastReelRecords: DailyRecapEligibleRecord[] = [
     imageUrl: "/booking-images/shawn-michael-moore-big-sandy-regional-detention-center-159147/mugshot.jpg",
     imageLocalPath: "/booking-images/shawn-michael-moore-big-sandy-regional-detention-center-159147/mugshot.jpg",
     complianceNotes: null,
+    viewCount: 1,
     facebookDraftUpdatedAt: new Date("2026-06-16T05:39:55.810Z"),
   },
   {
@@ -57,6 +58,7 @@ const lastReelRecords: DailyRecapEligibleRecord[] = [
     imageUrl: "/booking-images/austin-oneil-harless-big-sandy-regional-detention-center-158729/mugshot.jpg",
     imageLocalPath: "/booking-images/austin-oneil-harless-big-sandy-regional-detention-center-158729/mugshot.jpg",
     complianceNotes: null,
+    viewCount: 2,
     facebookDraftUpdatedAt: new Date("2026-06-16T15:09:06.767Z"),
   },
   {
@@ -72,6 +74,7 @@ const lastReelRecords: DailyRecapEligibleRecord[] = [
     imageUrl: "/booking-images/david-e-smith-big-sandy-regional-detention-center-164805/mugshot.jpg",
     imageLocalPath: "/booking-images/david-e-smith-big-sandy-regional-detention-center-164805/mugshot.jpg",
     complianceNotes: null,
+    viewCount: 3,
     facebookDraftUpdatedAt: new Date("2026-06-16T19:39:10.378Z"),
   },
   {
@@ -87,6 +90,7 @@ const lastReelRecords: DailyRecapEligibleRecord[] = [
     imageUrl: "/booking-images/james-e-ward-big-sandy-regional-detention-center-19367/mugshot.jpg",
     imageLocalPath: "/booking-images/james-e-ward-big-sandy-regional-detention-center-19367/mugshot.jpg",
     complianceNotes: null,
+    viewCount: 4,
     facebookDraftUpdatedAt: new Date("2026-06-16T23:09:09.487Z"),
   },
   {
@@ -102,6 +106,7 @@ const lastReelRecords: DailyRecapEligibleRecord[] = [
     imageUrl: "/booking-images/jennifer-lee-workman-big-sandy-regional-detention-center-154406/mugshot.jpg",
     imageLocalPath: "/booking-images/jennifer-lee-workman-big-sandy-regional-detention-center-154406/mugshot.jpg",
     complianceNotes: null,
+    viewCount: 5,
     facebookDraftUpdatedAt: new Date("2026-06-16T15:39:13.605Z"),
   },
   {
@@ -117,6 +122,7 @@ const lastReelRecords: DailyRecapEligibleRecord[] = [
     imageUrl: "/booking-images/timothy-a-mullett-big-sandy-regional-detention-center-160580/mugshot.jpg",
     imageLocalPath: "/booking-images/timothy-a-mullett-big-sandy-regional-detention-center-160580/mugshot.jpg",
     complianceNotes: null,
+    viewCount: 6,
     facebookDraftUpdatedAt: new Date("2026-06-16T10:09:04.992Z"),
   },
 ].sort((a, b) => a.facebookDraftUpdatedAt.getTime() - b.facebookDraftUpdatedAt.getTime());
