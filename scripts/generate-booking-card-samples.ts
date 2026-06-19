@@ -5,7 +5,7 @@ import { generateBookingCardImages } from "../src/lib/booking-card-generator";
 import { absoluteSiteUrl } from "../src/lib/display-format";
 import { bookingImageAbsolutePathFromPublicPath } from "../src/lib/booking-image-storage";
 
-const defaultOutputRoot = path.resolve("reports/daily-recap-review/latest/booking-card-samples");
+const defaultOutputRoot = path.resolve("reports/booking-catchup-review/latest/booking-card-samples");
 process.env.BOOKING_IMAGE_STORAGE_DIR = process.env.BOOKING_IMAGE_STORAGE_DIR || defaultOutputRoot;
 
 function loadReviewSamples(): Array<BookingCardRecord & { sampleLabel: string }> {
@@ -74,7 +74,7 @@ async function main() {
     output.push({
       sampleLabel: sample.sampleLabel,
       slug: sample.slug,
-      source: "daily_recap_booking_card_review_sample",
+      source: "booking_catchup_booking_card_review_sample",
       previewPath: cards.previewPath,
       previewFile: bookingImageAbsolutePathFromPublicPath(cards.previewPath),
       previewUrl: absoluteSiteUrl(cards.previewPath),
@@ -84,7 +84,7 @@ async function main() {
     });
   }
 
-  const manifestPath = path.resolve("reports/daily-recap-review/latest/review-manifest.json");
+  const manifestPath = path.resolve("reports/booking-catchup-review/latest/review-manifest.json");
   const manifestText = await fs.readFile(manifestPath, "utf8").catch(() => null);
   if (manifestText) {
     const manifest = JSON.parse(manifestText) as Record<string, unknown>;

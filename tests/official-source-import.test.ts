@@ -209,14 +209,14 @@ describe("official BSRDC public roster parser", () => {
     expect(runner).toContain('envNum("FACEBOOK_DRAFT_REPAIR_MAX_CREATE", 25)');
   });
 
-  it("runs the Daily Booking Recap automation from the worker cycle", async () => {
+  it("runs the Booking Catch-Up automation from the worker cycle", async () => {
     const runner = await readFile("scripts/automation-runner.ts", "utf8");
     const runOnce = runner.slice(runner.indexOf("async function runOnce("));
-    expect(runner).toContain("runDailyBookingRecapAutomation");
-    expect(runner).toContain("publishDailyRecapFacebookReel");
-    expect(runOnce).toContain("dailyRecapResult");
+    expect(runner).toContain("runBookingCatchUpAutomation");
+    expect(runner).toContain("publishBookingCatchUpFacebookReel");
+    expect(runOnce).toContain("bookingCatchUpResult");
     expect(runOnce.indexOf("verifyFacebookPageToken()")).toBeLessThan(
-      runOnce.indexOf("runDailyBookingRecapAutomation"),
+      runOnce.indexOf("runBookingCatchUpAutomation"),
     );
   });
 });

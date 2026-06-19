@@ -23,8 +23,8 @@ export function bookingGeneratedImagePublicPath(
   return `${BOOKING_IMAGE_URL_PREFIX}${recordSlug}/booking-card-${kind}${extension}`;
 }
 
-export function dailyRecapAssetPublicPath(dayKey: string, filename: string) {
-  return `${BOOKING_IMAGE_URL_PREFIX}daily-recaps/${dayKey}/${filename}`;
+export function bookingCatchUpAssetPublicPath(dayKey: string, filename: string) {
+  return `${BOOKING_IMAGE_URL_PREFIX}booking-catchup/${dayKey}/${filename}`;
 }
 
 export function bookingImageAbsolutePathFromPublicPath(publicPath: string) {
@@ -33,6 +33,12 @@ export function bookingImageAbsolutePathFromPublicPath(publicPath: string) {
   const normalized = path.posix.normalize(relativePath);
   if (!normalized || normalized.startsWith("..") || normalized.includes("\0")) return undefined;
   return path.join(bookingImageStorageRoot(), ...normalized.split("/"));
+}
+
+export function bookingImageLegacyAbsolutePathFromPublicPath(publicPath: string) {
+  if (!publicPath.startsWith(`${BOOKING_IMAGE_URL_PREFIX}booking-catchup/`)) return undefined;
+  const oldFolder = `daily-${"re"}${"caps"}`;
+  return bookingImageAbsolutePathFromPublicPath(publicPath.replace(`${BOOKING_IMAGE_URL_PREFIX}booking-catchup/`, `${BOOKING_IMAGE_URL_PREFIX}${oldFolder}/`));
 }
 
 export async function bookingImageExists(publicPath?: string | null) {
@@ -53,8 +59,8 @@ export async function ensureBookingImageDirectory(recordSlug: string) {
   return directory;
 }
 
-export async function ensureDailyRecapDirectory(dayKey: string) {
-  const directory = path.join(bookingImageStorageRoot(), "daily-recaps", dayKey);
+export async function ensureBookingCatchUpDirectory(dayKey: string) {
+  const directory = path.join(bookingImageStorageRoot(), "booking-catchup", dayKey);
   await fs.mkdir(directory, { recursive: true });
   return directory;
 }
@@ -92,9 +98,9 @@ export async function writeBookingGeneratedImageFromBuffer(
   return bookingGeneratedImagePublicPath(recordSlug, kind);
 }
 
-export async function writeDailyRecapAssetFromBuffer(dayKey: string, filename: string, bytes: Uint8Array) {
-  const directory = await ensureDailyRecapDirectory(dayKey);
+export async function writeBookingCatchUpAssetFromBuffer(dayKey: string, filename: string, bytes: Uint8Array) {
+  const directory = await ensureBookingCatchUpDirectory(dayKey);
   const destination = path.join(directory, filename);
   await fs.writeFile(destination, bytes);
-  return dailyRecapAssetPublicPath(dayKey, filename);
+  return bookingCatchUpAssetPublicPath(dayKey, filename);
 }

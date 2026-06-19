@@ -81,7 +81,7 @@ export async function publishFacebookPageReel(input: {
   return json as { success?: boolean; reel_id?: string; id?: string; permalink_url?: string };
 }
 
-export async function publishDailyRecapFacebookReel(input: {
+export async function publishBookingCatchUpFacebookReel(input: {
   description: string;
   title?: string;
   videoFile: string;

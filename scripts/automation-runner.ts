@@ -1,4 +1,4 @@
-﻿import { prisma } from "../src/lib/prisma-runtime";
+import { prisma } from "../src/lib/prisma-runtime";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { importApprovedFolder } from "../src/lib/approved-imports";
@@ -6,14 +6,14 @@ import { repairMissingFacebookDrafts } from "../src/lib/facebook-draft-repair";
 import { runOfficialNewsImport } from "../src/lib/official-news-import";
 import { runOfficialSourceImport } from "../src/lib/official-source-import";
 import { verifyFacebookPageToken } from "../src/lib/facebook-token-health";
-import { runDailyBookingRecapAutomation } from "../src/lib/daily-booking-recap";
+import { runBookingCatchUpAutomation } from "../src/lib/booking-catchup";
 import { getFacebookCredential, markFacebookPostResult, redactFacebookSecrets } from "../src/lib/facebook-connection";
 import {
   createFacebookFeedPostForm,
   createFacebookPhotoUploadForm,
   resolveFacebookPhotoUploadUrl,
 } from "../src/lib/facebook-publish";
-import { publishDailyRecapFacebookReel } from "../src/lib/facebook-reels";
+import { publishBookingCatchUpFacebookReel } from "../src/lib/facebook-reels";
 import { queueRowanPromoDraft } from "../src/lib/rowan-promo-runtime";
 
 const ROOT = process.cwd();
@@ -466,17 +466,17 @@ async function runOnce(options: { skipFacebookPost?: boolean } = {}) {
   const draftResults = await createFacebookDraftsForPublishedRecords();
   const facebookTokenHealth = await verifyFacebookPageToken();
   const rowanPromoResult = await queueRowanPromoDraft();
-  const dailyRecapResult = !facebookTokenHealth.healthy
+  const bookingCatchUpResult = !facebookTokenHealth.healthy
     ? {
         skipped: true,
-        reason: "Facebook Page token health check failed; Daily Recap Reel queue preserved.",
+        reason: "Facebook Page token health check failed; Booking Catch-Up Reel queue preserved.",
         actionRequired: facebookTokenHealth.actionRequired,
       }
-    : await runDailyBookingRecapAutomation({
+    : await runBookingCatchUpAutomation({
         publishReel: async ({ caption, videoFile }) =>
-          publishDailyRecapFacebookReel({
+          publishBookingCatchUpFacebookReel({
             description: caption,
-            title: "Big Sandy Crime Watch Daily Booking Recap",
+            title: "Booking Catch-Up",
             videoFile,
           }),
       });
@@ -500,7 +500,7 @@ async function runOnce(options: { skipFacebookPost?: boolean } = {}) {
         draftResults,
         facebookTokenHealth,
         rowanPromoResult,
-        dailyRecapResult,
+        bookingCatchUpResult,
         facebookPostResult,
       },
       null,
