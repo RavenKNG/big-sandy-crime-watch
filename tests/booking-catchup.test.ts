@@ -12,6 +12,7 @@ import {
   orderBookingCatchUpRecords,
   planBookingCatchUpTiming,
   selectBookingCatchUpRecords,
+  timeSlotForDay,
   type BookingCatchUpEligibleRecord,
 } from "../src/lib/booking-catchup";
 import { bookingImageAbsolutePathFromPublicPath, writeBookingImageFromBuffer } from "../src/lib/booking-image-storage";
@@ -57,6 +58,7 @@ function config() {
     maxRecords: 10,
     maxRecordsPerReel: 8,
     maxReelsPerDay: 1,
+    postWindowMinutes: 90,
     targetDurationSeconds: 20,
     minDurationSeconds: 20,
     includeStaticFallback: true,
@@ -97,6 +99,15 @@ describe("Booking Catch-Up", () => {
 
   it("uses the configured timezone to derive the daily key", () => {
     expect(dayKeyInTimeZone(new Date("2026-06-09T01:00:00.000Z"), "America/New_York")).toBe("2026-06-08");
+  });
+
+  it("does not back-post stale morning slots later in the day", () => {
+    const staleMorning = timeSlotForDay(config(), new Date("2026-06-19T22:53:00.000Z"));
+    expect(staleMorning.due).toBe(false);
+    expect(staleMorning.dueSlots).toEqual([]);
+
+    const activeEvening = timeSlotForDay(config(), new Date("2026-06-19T23:05:00.000Z"));
+    expect(activeEvening.dueSlots.map((slot) => slot.time)).toEqual(["19:00"]);
   });
 
   it("plans exactly 8 card slides for exactly 20 seconds with no intro or outro", () => {

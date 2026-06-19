@@ -56,6 +56,7 @@ export type BookingCatchUpConfig = {
   maxRecords: number;
   maxRecordsPerReel: number;
   maxReelsPerDay: number;
+  postWindowMinutes: number;
   minDurationSeconds: number;
   targetDurationSeconds: number;
   includeStaticFallback: boolean;
@@ -177,6 +178,7 @@ export function getBookingCatchUpConfig(): BookingCatchUpConfig {
     maxRecords: envInt("BOOKING_CATCHUP_MAX_RECORDS", BOOKING_CATCHUP_CANDIDATE_POOL_SIZE),
     maxRecordsPerReel: envInt("BOOKING_CATCHUP_MAX_RECORDS_PER_REEL", BOOKING_CATCHUP_RECORD_COUNT),
     maxReelsPerDay: envInt("BOOKING_CATCHUP_MAX_REELS_PER_DAY", 1),
+    postWindowMinutes: envInt("BOOKING_CATCHUP_POST_WINDOW_MINUTES", 90),
     minDurationSeconds: envNum("BOOKING_CATCHUP_MIN_DURATION_SECONDS", BOOKING_CATCHUP_TOTAL_DURATION_SECONDS),
     targetDurationSeconds: envNum("BOOKING_CATCHUP_TARGET_DURATION_SECONDS", BOOKING_CATCHUP_TOTAL_DURATION_SECONDS),
     includeStaticFallback: envBool("BOOKING_CATCHUP_INCLUDE_STATIC_FALLBACK", true),
@@ -259,16 +261,17 @@ function slotIdForTime(time: string) {
   return time.replace(/[^0-9]/g, "");
 }
 
-function timeSlotForDay(config: BookingCatchUpConfig, now: Date) {
+export function timeSlotForDay(config: BookingCatchUpConfig, now: Date) {
   const parts = formatParts(now, config.timeZone);
   const currentMinutes = Number.parseInt(parts.hour || "0", 10) * 60 + Number.parseInt(parts.minute || "0", 10);
   const slots = config.times.map((time) => {
     const [scheduledHour, scheduledMinute] = time.split(":").map((value) => Number.parseInt(value, 10));
     const scheduledMinutes = scheduledHour * 60 + scheduledMinute;
+    const minutesSinceScheduled = currentMinutes - scheduledMinutes;
     return {
       time,
       slotId: slotIdForTime(time),
-      due: currentMinutes >= scheduledMinutes,
+      due: minutesSinceScheduled >= 0 && minutesSinceScheduled < config.postWindowMinutes,
     };
   });
   const dueSlots = slots.filter((slot) => slot.due);
