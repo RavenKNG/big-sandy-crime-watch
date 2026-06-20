@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { getDb } from "./db";
 import { createFacebookRecordDraftPayload } from "./facebook-record-drafts";
+import { absoluteSiteUrl } from "./display-format";
 import {
   automaticOfficialSources,
   findOfficialSourceBySlug,
@@ -450,14 +451,33 @@ async function createFacebookDraft(record: {
 }) {
   const db = getDb();
   const existing = await db.facebookDraft.findFirst({ where: { recordId: record.id } });
+  const draftPayload = await createFacebookRecordDraftPayload(record, process.env.SITE_URL);
   if (existing) {
+    if (existing.status !== "POSTED" && draftPayload.imageUrl) {
+      await db.facebookDraft.update({
+        where: { id: existing.id },
+        data: {
+          status: "DRAFTED",
+          scheduledFor: new Date(),
+          postText: draftPayload.postText,
+          postUrl: draftPayload.postUrl,
+          imageUrl: draftPayload.imageUrl,
+          errorMessage: null,
+        },
+      });
+      await db.publicRecordDemo.update({
+        where: { id: record.id },
+        data: { facebookPostStatus: "DRAFTED" },
+      });
+      return { created: false, id: existing.id };
+    }
+
     await db.publicRecordDemo.update({
       where: { id: record.id },
-      data: { facebookPostStatus: existing.status === "POSTED" ? "POSTED" : "DRAFTED" },
+      data: { facebookPostStatus: existing.status },
     });
     return { created: false, id: existing.id };
   }
-  const draftPayload = await createFacebookRecordDraftPayload(record, process.env.SITE_URL);
   const draftStatus = draftPayload.imageUrl ? "DRAFTED" : "MANUAL_REQUIRED";
   const draft = await db.facebookDraft.create({
     data: {
@@ -549,10 +569,21 @@ export async function importOfficialRosterRecords(
           }
         }
         if (imagePath) {
-          await db.facebookDraft.updateMany({
-            where: { recordId: existing.id, imageUrl: null },
-            data: { imageUrl: imagePath },
+          const repairedDrafts = await db.facebookDraft.updateMany({
+            where: { recordId: existing.id, status: { in: ["MANUAL_REQUIRED", "FAILED", "DRAFTED", "QUEUED"] } },
+            data: {
+              imageUrl: absoluteSiteUrl(imagePath),
+              status: "DRAFTED",
+              scheduledFor: new Date(),
+              errorMessage: null,
+            },
           });
+          if (repairedDrafts.count > 0 && existing.facebookPostStatus !== "POSTED") {
+            await db.publicRecordDemo.update({
+              where: { id: existing.id },
+              data: { facebookPostStatus: "DRAFTED" },
+            });
+          }
         }
         summary.duplicatesSkipped += 1;
         continue;

@@ -199,6 +199,15 @@ describe("official BSRDC public roster parser", () => {
     expect(source).toContain('data: { facebookPostStatus: draftStatus }');
   });
 
+  it("repairs manual booking Facebook drafts when a mugshot appears later", async () => {
+    const source = await readFile("src/lib/official-source-import.ts", "utf8");
+    expect(source).toContain('existing.status !== "POSTED" && draftPayload.imageUrl');
+    expect(source).toContain('status: "DRAFTED"');
+    expect(source).toContain("errorMessage: null");
+    expect(source).toContain("repairedDrafts.count > 0");
+    expect(source).toContain("absoluteSiteUrl(imagePath)");
+  });
+
   it("self-heals missing Facebook drafts before posting", async () => {
     const runner = await readFile("scripts/automation-runner.ts", "utf8");
     const runOnce = runner.slice(runner.indexOf("async function runOnce("));
