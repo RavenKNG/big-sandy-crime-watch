@@ -5,7 +5,6 @@ import { spawn } from "node:child_process";
 import ffmpegPath from "ffmpeg-static";
 import sharp from "sharp";
 import { getDb } from "./db";
-import { generateBookingCardImages } from "./booking-card-generator";
 import {
   bookingImageAbsolutePathFromPublicPath,
   bookingCatchUpAssetPublicPath,
@@ -13,6 +12,7 @@ import {
 } from "./booking-image-storage";
 import { resolveBookingPhoto } from "./booking-photo";
 import { markFacebookPostResult } from "./facebook-connection";
+import { formatBookingDateTime } from "./display-format";
 
 const BOOKING_CATCHUP_TARGET_TYPE = "booking_catchup";
 const BOOKING_CATCHUP_RECORD_ACTION_PREFIX = "BOOKING_CATCHUP_INCLUDED:";
@@ -28,6 +28,8 @@ const BOOKING_CATCHUP_RECORD_COUNT = 8;
 const BOOKING_CATCHUP_CANDIDATE_POOL_SIZE = 10;
 const BOOKING_CATCHUP_CARD_DURATION_SECONDS = 2.5;
 const BOOKING_CATCHUP_TOTAL_DURATION_SECONDS = 20;
+const BOOKING_CATCHUP_MUGSHOT_WIDTH = 1022;
+const BOOKING_CATCHUP_MUGSHOT_HEIGHT = 950;
 
 export type BookingCatchUpEligibleRecord = {
   id: string;
@@ -317,52 +319,196 @@ function escapeXml(value: string) {
     .replace(/'/g, "&apos;");
 }
 
-async function createBookingCatchUpCardSlide(cardPublicPath: string, title: string) {
-  const cardFile = bookingImageAbsolutePathFromPublicPath(cardPublicPath);
-  if (!cardFile) throw new Error(`Unable to resolve booking card file for ${cardPublicPath}`);
+function cleanUpper(value?: string | null, fallback = "NOT LISTED") {
+  const normalized = value?.replace(/\s+/g, " ").trim();
+  return normalized ? normalized.toUpperCase() : fallback;
+}
 
-  const card = sharp(cardFile);
-  const cardBuffer = await card.png().toBuffer();
-  const background = await sharp(cardBuffer)
-    .resize(1080, 1920, { fit: "cover" })
-    .blur(30)
-    .modulate({ brightness: 0.72, saturation: 0.85 })
-    .composite([{ input: Buffer.from('<svg width="1080" height="1920" xmlns="http://www.w3.org/2000/svg"><rect width="1080" height="1920" fill="rgba(5,8,12,0.54)"/></svg>') }])
-    .png()
-    .toBuffer();
+function wrapWords(value: string, maxChars: number, maxLines: number) {
+  const words = value.replace(/\s+/g, " ").trim().split(" ").filter(Boolean);
+  const lines: string[] = [];
+  let current = "";
 
-  const framedCard = await sharp(cardBuffer)
-    .resize(980, 980, { fit: "contain", background: "#0b0d12" })
-    .extend({
-      top: 24,
-      bottom: 24,
-      left: 24,
-      right: 24,
-      background: "#0b0d12",
+  for (const word of words) {
+    const next = current ? `${current} ${word}` : word;
+    if (next.length > maxChars && current) {
+      lines.push(current);
+      current = word;
+    } else {
+      current = next;
+    }
+  }
+  if (current) lines.push(current);
+  if (lines.length <= maxLines) return lines;
+
+  const kept = lines.slice(0, maxLines);
+  kept[maxLines - 1] = `${kept[maxLines - 1].replace(/\s+$/, "")}...`;
+  return kept;
+}
+
+function tspans(lines: string[], x: number, y: number, lineHeight: number, textLength?: number) {
+  const fitAttrs = textLength ? ` textLength="${textLength}" lengthAdjust="spacingAndGlyphs"` : "";
+  return lines
+    .map((line, index) => `<tspan x="${x}" y="${y + index * lineHeight}"${fitAttrs}>${escapeXml(line)}</tspan>`)
+    .join("");
+}
+
+function fittedFont(lines: string[], baseSize: number, minSize: number, idealChars: number) {
+  const longest = Math.max(...lines.map((line) => line.length), 1);
+  return Math.max(minSize, Math.min(baseSize, Math.floor(baseSize * (idealChars / longest))));
+}
+
+function bookingCatchUpSimpleBadge(x: number, y: number, size: number) {
+  const cx = x + size / 2;
+  const cy = y + size / 2;
+  return `
+    <g>
+      <circle cx="${cx}" cy="${cy}" r="${size * 0.48}" fill="#030304" stroke="#c51621" stroke-width="${size * 0.04}"/>
+      <circle cx="${cx}" cy="${cy}" r="${size * 0.43}" fill="#020203" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+      <text x="${cx}" y="${cy - size * 0.17}" text-anchor="middle" font-family="Arial Black, Impact, sans-serif" font-size="${size * 0.21}" font-weight="900" fill="#f4f4f4" letter-spacing="1">BIG</text>
+      <text x="${cx}" y="${cy + size * 0.06}" text-anchor="middle" font-family="Arial Black, Impact, sans-serif" font-size="${size * 0.18}" font-weight="900" fill="#d71924" letter-spacing="0.5">SANDY</text>
+      <text x="${cx}" y="${cy + size * 0.24}" text-anchor="middle" font-family="Arial Black, Impact, sans-serif" font-size="${size * 0.09}" font-weight="900" fill="#f4f4f4" letter-spacing="0.5">CRIME WATCH</text>
+    </g>
+  `;
+}
+
+function bookingCatchUpDefs() {
+  return `
+    <filter id="reelNoise" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.72" numOctaves="2" seed="23" result="noise"/>
+      <feColorMatrix in="noise" type="saturate" values="0"/>
+      <feComponentTransfer><feFuncA type="table" tableValues="0 0.16"/></feComponentTransfer>
+      <feBlend mode="soft-light" in2="SourceGraphic"/>
+    </filter>
+    <radialGradient id="reelBg" cx="50%" cy="28%" r="76%">
+      <stop offset="0%" stop-color="#1a1b1f"/>
+      <stop offset="56%" stop-color="#09090b"/>
+      <stop offset="100%" stop-color="#010101"/>
+    </radialGradient>
+    <linearGradient id="catchupRed" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#8d1118"/>
+      <stop offset="45%" stop-color="#e01f2b"/>
+      <stop offset="100%" stop-color="#8b1017"/>
+    </linearGradient>
+    <linearGradient id="photoVignette" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="rgba(0,0,0,0.05)"/>
+      <stop offset="72%" stop-color="rgba(0,0,0,0)"/>
+      <stop offset="100%" stop-color="rgba(0,0,0,0.22)"/>
+    </linearGradient>
+  `;
+}
+
+async function readBookingCatchUpPhoto(record: BookingCatchUpEligibleRecord) {
+  const photo = await resolveBookingPhoto(record);
+  if (photo.status !== "available" || !photo.imagePathOrUrl) return null;
+
+  let bytes: Buffer;
+  if (/^https?:\/\//i.test(photo.imagePathOrUrl)) {
+    const response = await fetch(photo.imagePathOrUrl);
+    if (!response.ok) return null;
+    bytes = Buffer.from(await response.arrayBuffer());
+  } else {
+    const localPath = bookingImageAbsolutePathFromPublicPath(photo.imagePathOrUrl);
+    if (!localPath) return null;
+    bytes = await fs.readFile(path.resolve(localPath));
+  }
+
+  const cropped = await sharp(bytes)
+    .resize(BOOKING_CATCHUP_MUGSHOT_WIDTH, BOOKING_CATCHUP_MUGSHOT_HEIGHT, {
+      fit: "cover",
+      position: sharp.strategy.attention,
     })
-    .png()
+    .jpeg({ quality: 92, mozjpeg: true })
     .toBuffer();
 
-  return sharp(background)
-    .composite([
-      { input: framedCard, top: 390, left: 26 },
-      {
-        input: Buffer.from(
-          `<svg width="1080" height="1920" xmlns="http://www.w3.org/2000/svg">
-            <text x="540" y="152" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="52" fill="#f5f7fb">BIG SANDY CRIME WATCH</text>
-            <rect x="290" y="190" width="500" height="54" fill="#b71723"/>
-            <text x="540" y="228" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="30" fill="#ffffff" letter-spacing="4">Booking Catch-Up</text>
-            <text x="540" y="1500" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="42" fill="#ffffff">${escapeXml(title)}</text>
-            <text x="540" y="1836" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="26" fill="#ffffff" letter-spacing="2">BIGSANDYCRIMEWATCH.COM</text>
-            <text x="540" y="1886" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="22" fill="#ffffff" letter-spacing="1.5">ARREST DOES NOT IMPLY GUILT.</text>
-          </svg>`,
-        ),
-        top: 0,
-        left: 0,
-      },
-    ])
-    .png()
-    .toBuffer();
+  return {
+    bytes: cropped,
+    mimeType: "image/jpeg",
+  };
+}
+
+function bookingCatchUpPhotoSvg(photo: Awaited<ReturnType<typeof readBookingCatchUpPhoto>>) {
+  if (!photo) {
+    return `
+      <rect x="29" y="284" width="1022" height="950" fill="#2f333a"/>
+      ${Array.from({ length: 8 })
+        .map((_, index) => `<line x1="122" y1="${362 + index * 88}" x2="766" y2="${362 + index * 88}" stroke="rgba(255,255,255,0.36)" stroke-width="5"/>`)
+        .join("")}
+      <text x="540" y="765" text-anchor="middle" font-family="Arial Black, Impact, sans-serif" font-size="38" fill="#f5f5f5">BOOKING PHOTO UNAVAILABLE</text>
+    `;
+  }
+
+  const href = `data:${photo.mimeType};base64,${photo.bytes.toString("base64")}`;
+  return `
+    <image href="${href}" x="29" y="284" width="1022" height="950" preserveAspectRatio="none"/>
+    <rect x="29" y="284" width="1022" height="950" fill="url(#photoVignette)"/>
+    <g transform="rotate(-29 540 760)">
+      <text x="540" y="760" text-anchor="middle" font-family="Arial Black, Impact, sans-serif" font-size="66" font-weight="900" fill="rgba(255,255,255,0.065)" stroke="rgba(0,0,0,0.06)" stroke-width="1.5" letter-spacing="3">BIGSANDYCRIMEWATCH.COM</text>
+    </g>
+  `;
+}
+
+function bookedDateText(record: BookingCatchUpEligibleRecord) {
+  return cleanUpper(
+    formatBookingDateTime(record.bookingDateTimeText, false) ||
+      formatBookingDateTime(record.recordDate, false),
+    "DATE UNAVAILABLE",
+  );
+}
+
+async function createBookingCatchUpCardSlide(record: BookingCatchUpEligibleRecord) {
+  const photo = await readBookingCatchUpPhoto(record);
+  const name = cleanUpper(record.displayName, "NAME UNAVAILABLE");
+  const nameLines = wrapWords(name, 24, 2);
+  const nameFont = fittedFont(nameLines, 88, 50, 14.5);
+  const nameStartY = nameLines.length > 1 ? 1312 : 1346;
+  const bookedLines = wrapWords(bookedDateText(record), 18, 2);
+  const agencyLines = wrapWords(cleanUpper(record.arrestingAgency ?? record.sourceName, "NOT LISTED"), 20, 2);
+  const bookedFont = fittedFont(bookedLines, 34, 25, 15);
+  const agencyFont = fittedFont(agencyLines, 34, 20, 13);
+  const agencyTextLength = agencyLines.some((line) => line.length > 12) ? 306 : undefined;
+
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920">
+      <defs>${bookingCatchUpDefs()}</defs>
+      <rect width="1080" height="1920" fill="url(#reelBg)"/>
+      <rect width="1080" height="1920" fill="rgba(0,0,0,0.16)" filter="url(#reelNoise)"/>
+      ${bookingCatchUpSimpleBadge(34, 32, 146)}
+      <text x="650" y="116" text-anchor="middle" font-family="Arial Black, Impact, sans-serif" font-size="56" font-weight="900" fill="#f7f7f7" letter-spacing="1.2" textLength="770" lengthAdjust="spacingAndGlyphs">BIG SANDY CRIME WATCH</text>
+
+      <polygon points="215,170 900,170 874,232 189,232" fill="url(#catchupRed)"/>
+      <path d="M166 170l-28 62M188 170l-28 62M916 170l-28 62M938 170l-28 62" stroke="#d71924" stroke-width="8"/>
+      <text x="544" y="213" text-anchor="middle" font-family="Arial Black, Impact, sans-serif" font-size="34" font-weight="900" fill="#ffffff" letter-spacing="15">BOOKING CATCH-UP</text>
+
+      <rect x="26" y="281" width="1028" height="1329" fill="#030303" stroke="#d71924" stroke-width="4"/>
+      <clipPath id="mugshotClip"><rect x="29" y="284" width="1022" height="950"/></clipPath>
+      <g clip-path="url(#mugshotClip)">
+        ${bookingCatchUpPhotoSvg(photo)}
+      </g>
+      <rect x="29" y="284" width="1022" height="950" fill="none" stroke="#d71924" stroke-width="3"/>
+
+      <rect x="29" y="1234" width="1022" height="168" fill="#040405"/>
+      <text x="540" y="${nameStartY}" text-anchor="middle" font-family="Arial Black, Impact, sans-serif" font-size="${nameFont}" font-weight="900" fill="#f2f2f2" letter-spacing="2">${tspans(nameLines, 540, nameStartY, Math.round(nameFont * 0.86))}</text>
+      <line x1="43" y1="1402" x2="1037" y2="1402" stroke="#d71924" stroke-width="3"/>
+
+      <rect x="29" y="1404" width="1022" height="206" fill="#070708"/>
+      <line x1="329" y1="1404" x2="329" y2="1610" stroke="rgba(215,25,36,0.72)" stroke-width="2"/>
+      <line x1="679" y1="1404" x2="679" y2="1610" stroke="rgba(215,25,36,0.72)" stroke-width="2"/>
+      <text x="179" y="1469" text-anchor="middle" font-family="Arial Black, Impact, sans-serif" font-size="28" font-weight="900" fill="#d71924">BOOKED:</text>
+      <text x="179" y="1530" text-anchor="middle" font-family="Arial Black, Impact, sans-serif" font-size="${bookedFont}" font-weight="900" fill="#f4f4f4">${tspans(bookedLines, 179, 1530, 38)}</text>
+      <text x="504" y="1469" text-anchor="middle" font-family="Arial Black, Impact, sans-serif" font-size="28" font-weight="900" fill="#d71924">AGENCY:</text>
+      <text x="504" y="1530" text-anchor="middle" font-family="Arial Black, Impact, sans-serif" font-size="${agencyFont}" font-weight="900" fill="#f4f4f4">${tspans(agencyLines, 504, 1530, 36, agencyTextLength)}</text>
+      <text x="865" y="1466" text-anchor="middle" font-family="Arial Black, Impact, sans-serif" font-size="26" font-weight="900" fill="#d71924" textLength="280" lengthAdjust="spacingAndGlyphs">CHARGE DETAILS:</text>
+      <text x="865" y="1536" text-anchor="middle" font-family="Arial Black, Impact, sans-serif" font-size="22" font-weight="900" fill="#f4f4f4" letter-spacing="0.2" textLength="294" lengthAdjust="spacingAndGlyphs">BIGSANDYCRIMEWATCH.COM</text>
+
+      <line x1="175" y1="1693" x2="905" y2="1693" stroke="rgba(215,25,36,0.72)" stroke-width="3" stroke-linecap="round"/>
+      <text x="540" y="1737" text-anchor="middle" font-family="Arial Black, Impact, sans-serif" font-size="28" font-weight="900" fill="#d8d8d8" letter-spacing="1.8">ARREST DOES NOT IMPLY GUILT.</text>
+      <text x="540" y="1785" text-anchor="middle" font-family="Arial Black, Impact, sans-serif" font-size="28" font-weight="900" fill="#d8d8d8" letter-spacing="1.8">ALL INDIVIDUALS ARE PRESUMED INNOCENT</text>
+      <text x="540" y="1833" text-anchor="middle" font-family="Arial Black, Impact, sans-serif" font-size="28" font-weight="900" fill="#d8d8d8" letter-spacing="1.8">UNLESS PROVEN GUILTY IN COURT.</text>
+    </svg>
+  `;
+
+  return sharp(Buffer.from(svg)).png({ compressionLevel: 9 }).toBuffer();
 }
 
 function bookingTimeText(record: Pick<BookingCatchUpEligibleRecord, "bookingDateTimeText" | "recordDate" | "bookingTimeKnown">) {
@@ -615,9 +761,8 @@ export async function buildBookingCatchUpReels(options: {
 
     for (let index = 0; index < batch.length; index += 1) {
       const record = batch[index];
-      const cards = await generateBookingCardImages(record);
       const photo = await resolveBookingPhoto(record);
-      const slide = await createBookingCatchUpCardSlide(cards.fullPath, record.displayName);
+      const slide = await createBookingCatchUpCardSlide(record);
       const slideName = `part-${batchNumber}-card-${String(index + 1).padStart(2, "0")}.png`;
       const slidePath = await writeBookingCatchUpAssetFromBuffer(dayKey, slideName, slide);
       const slideFile = bookingImageAbsolutePathFromPublicPath(slidePath);

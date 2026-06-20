@@ -97,6 +97,88 @@ describe("Booking Catch-Up", () => {
     expect(caption).toContain("An arrest does not imply guilt.");
   });
 
+  it("uses the approved Booking Catch-Up reel card wording", async () => {
+    const source = await fs.readFile(path.resolve("src/lib/booking-catchup.ts"), "utf8");
+    expect(source).toContain("BIG SANDY CRIME WATCH");
+    expect(source).toContain("BOOKING CATCH-UP");
+    expect(source).toContain("CHARGE DETAILS:");
+    expect(source).not.toContain("CHANGE DETAILS:");
+    expect(source).toContain("sharp.strategy.attention");
+    expect(source).not.toContain("VIEW FULL CHARGES &amp; DETAILS:");
+    expect(source).not.toMatch(/Booking Report|Daily Recap|3, 2, 1|countdown/i);
+  });
+
+  it("balances the info row as booked, agency, and charge details only", async () => {
+    const source = await fs.readFile(path.resolve("src/lib/booking-catchup.ts"), "utf8");
+    expect(source).toContain('line x1="329"');
+    expect(source).toContain('line x1="679"');
+    expect(source).toContain('text x="179" y="1469"');
+    expect(source).toContain('text x="504" y="1469"');
+    expect(source).toContain('text x="865" y="1466"');
+    expect(source).toContain("BOOKED:");
+    expect(source).toContain("AGENCY:");
+    expect(source).toContain("CHARGE DETAILS:");
+    expect(source).not.toMatch(/>AGE:|>ARREST DATE:|>COUNTY:|>BOND:|>STATUS:/i);
+  });
+
+  it("uses only the approved simple header badge and no footer icons", async () => {
+    const source = await fs.readFile(path.resolve("src/lib/booking-catchup.ts"), "utf8");
+    expect(source).not.toContain("booking-catchup-badge-approved.png");
+    expect(source).not.toContain("***");
+    expect(source).toContain("bookingCatchUpSimpleBadge");
+    expect(source).toContain("CRIME WATCH");
+    expect(source).not.toContain("<path d=\"M50 0c31 20");
+    expect(source).toContain("ARREST DOES NOT IMPLY GUILT.");
+    expect(source).toContain("text-anchor=\"middle\"");
+  });
+
+  it("renders short, medium, and long names into 1080x1920 reel cards", async () => {
+    const storageRoot = await fs.mkdtemp(path.join(os.tmpdir(), "bscw-catchup-names-"));
+    process.env.BOOKING_IMAGE_STORAGE_DIR = storageRoot;
+    const records = await Promise.all(Array.from({ length: 8 }, (_, index) => record(index + 1)));
+    records[0].displayName = "JOE FOX";
+    records[1].displayName = "JONATHAN JAMES PACK";
+    records[2].displayName = "ALEXANDER CHRISTOPHER MONTGOMERY-WILLIAMS";
+
+    const result = await buildBookingCatchUpReels({ dayKey: "2026-06-14", records, config: config() });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error("Expected Booking Catch-Up build");
+
+    for (const file of result.reels[0].assets.slideFiles.slice(0, 3)) {
+      const metadata = await sharp(file).metadata();
+      expect(metadata.width).toBe(1080);
+      expect(metadata.height).toBe(1920);
+    }
+  }, 20000);
+
+  it("renders short, medium, and long agencies into 1080x1920 reel cards", async () => {
+    const storageRoot = await fs.mkdtemp(path.join(os.tmpdir(), "bscw-catchup-agencies-"));
+    process.env.BOOKING_IMAGE_STORAGE_DIR = storageRoot;
+    const agencies = [
+      "PPD",
+      "LPD",
+      "FISH & WILDLIFE",
+      "JOHNSON CO SHERIFF",
+      "MARTIN CO SHERIFF",
+      "BIG SANDY REGIONAL DETENTION CENTER",
+    ];
+    const records = await Promise.all(Array.from({ length: 8 }, async (_, index) => {
+      const item = await record(index + 1);
+      item.arrestingAgency = agencies[index] ?? "EXAMPLE AGENCY";
+      return item;
+    }));
+
+    const result = await buildBookingCatchUpReels({ dayKey: "2026-06-15", records, config: config() });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error("Expected Booking Catch-Up build");
+
+    for (const file of result.reels[0].assets.slideFiles.slice(0, agencies.length)) {
+      const metadata = await sharp(file).metadata();
+      expect(metadata.width).toBe(1080);
+      expect(metadata.height).toBe(1920);
+    }
+  }, 20000);
+
   it("uses the configured timezone to derive the daily key", () => {
     expect(dayKeyInTimeZone(new Date("2026-06-09T01:00:00.000Z"), "America/New_York")).toBe("2026-06-08");
   });
